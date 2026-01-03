@@ -1,0 +1,5 @@
+Django>=4.2
+psycopg>=3.0
+python-dotenv
+django-cors-headers
+requests
