@@ -657,8 +657,10 @@ export function FeatureTable(props: Props) {
                         </button>
                       </td>
                       {columns.map((c) => (
-                        <td key={c} className="max-w-xs truncate border-b border-zinc-100 px-2 py-2 text-zinc-900 hover:whitespace-normal hover:break-all hover:bg-white hover:shadow-lg hover:z-10 relative">
-                          {formatValue((rowProps as any)[c])}
+                        <td key={c} className="border-b border-zinc-100 px-2 py-2 text-zinc-900">
+                          <div className="max-w-xs truncate" title={formatValue((rowProps as any)[c])}>
+                            {formatValue((rowProps as any)[c])}
+                          </div>
                         </td>
                       ))}
                     </tr>
