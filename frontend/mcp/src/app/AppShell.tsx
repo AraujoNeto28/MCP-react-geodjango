@@ -9,6 +9,9 @@ import { SearchPanel } from "../features/search/SearchPanel"
 import { MapView } from "../map/MapView"
 import type { GeoServerLayerAvailability, LayerVisibilityState } from "../map/olLayerFactory"
 import { FeatureTable } from "../widgets/featureTable/FeatureTable"
+import { Button } from "../components/ui/Button"
+import { cn } from "../lib/utils"
+import { Alert, AlertDescription, AlertTitle } from "../components/ui/Alert"
 
 import type OlMap from "ol/Map"
 
@@ -168,12 +171,13 @@ export function AppShell() {
   }, [map, featureTableOpen, featureTableMinimized])
 
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden bg-white">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-zinc-50">
       {/* Mobile app bar */}
-      <div className="fixed left-0 right-0 top-0 z-50 flex h-12 items-center gap-3 border-b border-zinc-200 bg-white px-3 md:hidden">
-        <button
-          type="button"
-          className="rounded border border-zinc-200 p-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+      <div className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-zinc-200 bg-white px-4 shadow-sm md:hidden">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-zinc-600"
           title="Menu"
           onClick={() => setMobileSidebarOpen((v) => !v)}
         >
@@ -185,97 +189,134 @@ export function AppShell() {
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="h-5 w-5"
+            className="h-6 w-6"
             aria-hidden="true"
           >
             <path d="M4 6h16" />
             <path d="M4 12h16" />
             <path d="M4 18h16" />
           </svg>
-        </button>
+        </Button>
 
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-zinc-900">WebGIS</div>
+          <div className="truncate text-base font-bold text-zinc-900">WebGIS</div>
         </div>
       </div>
 
       {/* Mobile backdrop */}
       {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/30 md:hidden"
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden"
           onClick={() => setMobileSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={
-          "fixed inset-y-0 left-0 z-40 w-80 shrink-0 bg-white transition-transform md:static md:z-auto md:translate-x-0 md:border-r md:border-zinc-200 md:flex md:h-full md:flex-col " +
-          (mobileSidebarOpen ? "translate-x-0" : "-translate-x-full")
-        }
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 w-80 shrink-0 bg-white transition-transform duration-300 ease-in-out md:static md:z-auto md:translate-x-0 md:flex md:h-full md:flex-col shadow-xl md:shadow-none border-r border-zinc-200",
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
       >
-        <div className="flex h-14 items-center justify-between border-b border-zinc-200 px-4 shrink-0">
+        <div className="flex h-16 items-center justify-between border-b border-blue-800 px-6 shrink-0 bg-blue-700 text-white">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-zinc-900">WebGIS</div>
-            <div className="truncate text-xs text-zinc-500">
+            <div className="truncate text-lg font-bold tracking-tight">WebGIS</div>
+            <div className="truncate text-xs text-blue-100 font-medium uppercase tracking-wider">
               {sidebarView === "actions"
                 ? "Menu Principal"
                 : sidebarView === "layers"
-                  ? "Gerenciador de Camadas"
+                  ? "Camadas"
                   : "Buscar"}
             </div>
           </div>
           {sidebarView !== "actions" && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setSidebarView("actions")}
-              className="rounded border border-zinc-200 p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+              className="text-blue-200 hover:text-white hover:bg-blue-600"
               title="Voltar"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
-                strokeWidth={1.5}
+                strokeWidth={2}
                 stroke="currentColor"
                 className="h-5 w-5"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
               </svg>
-            </button>
+            </Button>
           )}
         </div>
 
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto bg-zinc-50/50">
           {sidebarView === "actions" && (
-            <div className="space-y-2">
+            <div className="p-4 space-y-3">
               <button
                 onClick={() => setSidebarView("search")}
-                className="flex w-full items-center justify-between rounded border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm font-medium text-zinc-900 hover:bg-zinc-100"
+                className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
               >
-                <span>Buscar</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="h-5 w-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-zinc-900">Buscar</div>
+                    <div className="text-xs text-zinc-500">Pesquisar feições nas camadas</div>
+                  </div>
+                </div>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={2}
                   stroke="currentColor"
-                  className="h-4 w-4 text-zinc-500"
+                  className="h-5 w-5 text-zinc-300 group-hover:text-zinc-500 transition-colors"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
+
               <button
                 onClick={() => setSidebarView("layers")}
-                className="flex w-full items-center justify-between rounded border border-zinc-200 bg-zinc-50 px-4 py-3 text-left text-sm font-medium text-zinc-900 hover:bg-zinc-100"
+                className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
               >
-                <span>Camadas</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="h-5 w-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-zinc-900">Camadas</div>
+                    <div className="text-xs text-zinc-500">Gerenciar visibilidade</div>
+                  </div>
+                </div>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={2}
                   stroke="currentColor"
-                  className="h-4 w-4 text-zinc-500"
+                  className="h-5 w-5 text-zinc-300 group-hover:text-zinc-500 transition-colors"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
@@ -285,10 +326,13 @@ export function AppShell() {
 
           {sidebarView === "layers" && (
             <>
-              {loading && <div className="text-sm text-zinc-600">Carregando camadas…</div>}
+              {loading && <div className="p-4 text-sm text-zinc-600 animate-pulse">Carregando camadas…</div>}
               {error && (
-                <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  Falha ao carregar: {error}
+                <div className="p-4">
+                  <Alert variant="destructive">
+                    <AlertTitle>Erro</AlertTitle>
+                    <AlertDescription>Falha ao carregar: {error}</AlertDescription>
+                  </Alert>
                 </div>
               )}
               {!loading && !error && data && (
@@ -310,8 +354,11 @@ export function AppShell() {
               )}
 
               {!env.geoserverBaseUrl && (
-                <div className="mt-4 rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                  VITE_GEOSERVER_BASE_URL não configurado. A tree aparece, mas as camadas não serão renderizadas no mapa.
+                <div className="p-4">
+                  <Alert>
+                    <AlertTitle>Aviso</AlertTitle>
+                    <AlertDescription>VITE_GEOSERVER_BASE_URL não configurado. A tree aparece, mas as camadas não serão renderizadas no mapa.</AlertDescription>
+                  </Alert>
                 </div>
               )}
             </>

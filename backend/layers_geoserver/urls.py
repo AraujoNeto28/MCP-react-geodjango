@@ -3,6 +3,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("tree-builder/", views.tree_builder_view, name="tree_builder"),
+    path("layers/tree/save/", views.save_tree, name="save_tree"),
     path("layers/tree/", views.layers_tree, name="layers_tree"),
     path("layers/root-groups/", views.root_groups_collection, name="root_groups_collection"),
     path("layers/root-groups/<slug:root_group_id>/", views.root_group_detail, name="root_group_detail"),

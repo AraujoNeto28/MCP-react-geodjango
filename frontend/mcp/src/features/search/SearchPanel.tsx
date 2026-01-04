@@ -4,6 +4,13 @@ import { fetchGeoServerLayerAttributes, fetchGeoServerLayerFieldSuggestions } fr
 import type { LayerDto, RootGroupDto } from "../layers/types"
 import GeoJSON from "ol/format/GeoJSON"
 import { readGeoJsonFeaturesRobust } from "../../map/geojsonUtils"
+import { Button } from "../../components/ui/Button"
+import { Input } from "../../components/ui/Input"
+import { Select } from "../../components/ui/Select"
+import { Label } from "../../components/ui/Label"
+import { Card } from "../../components/ui/Card"
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/Alert"
+import { cn } from "../../lib/utils"
 
 type Props = {
   apiBaseUrl: string
@@ -372,23 +379,25 @@ export function SearchPanel(props: Props) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 p-4">
       <div>
-        <div className="text-sm font-semibold text-zinc-900">Buscar</div>
-        <div className="mt-1 text-xs text-zinc-500">Selecione uma camada queryable e preencha os campos.</div>
+        <h2 className="text-lg font-semibold text-zinc-900">Buscar</h2>
+        <p className="text-sm text-zinc-500">Selecione uma camada queryable e preencha os campos.</p>
       </div>
 
       {props.loading && <div className="text-sm text-zinc-600">Carregando camadas…</div>}
       {props.error && (
-        <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">Falha ao carregar: {props.error}</div>
+        <Alert variant="destructive">
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>Falha ao carregar: {props.error}</AlertDescription>
+        </Alert>
       )}
 
       {!props.loading && !props.error && (
-        <div className="space-y-4" ref={popoverRef}>
+        <div className="space-y-6" ref={popoverRef}>
           <div className="space-y-2">
-            <div className="text-xs font-semibold text-zinc-700">Selecione a Camada</div>
-            <select
-              className="w-full rounded border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+            <Label>Selecione a Camada</Label>
+            <Select
               value={selectedLayerId}
               onChange={(e) => {
                 setSelectedLayerId(e.target.value)
@@ -401,23 +410,28 @@ export function SearchPanel(props: Props) {
                   {l.title}
                 </option>
               ))}
-            </select>
+            </Select>
             {!queryableLayers.length && (
-              <div className="text-xs text-zinc-500">Nenhuma camada marcada como queryable.</div>
+              <p className="text-xs text-zinc-500">Nenhuma camada marcada como queryable.</p>
             )}
           </div>
 
           {selectedLayer && (
-            <div className="space-y-3">
-              <div className="border-b border-zinc-200 pb-2 text-xs font-semibold text-zinc-700">Campos de Pesquisa</div>
+            <div className="space-y-4">
+              <div className="border-b border-zinc-200 pb-2">
+                <h3 className="text-sm font-semibold text-zinc-900">Campos de Pesquisa</h3>
+              </div>
 
               {fieldsLoading && <div className="text-sm text-zinc-600">Carregando campos…</div>}
               {fieldsError && (
-                <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{fieldsError}</div>
+                <Alert variant="destructive">
+                  <AlertTitle>Erro</AlertTitle>
+                  <AlertDescription>{fieldsError}</AlertDescription>
+                </Alert>
               )}
 
               {!fieldsLoading && !fieldsError && fields.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {fields.map((f) => {
                     const op = operators[f.name] ?? (f.typeGroup === "date" ? "on" : f.typeGroup === "number" ? "eq" : "contains")
                     const showNull = isNullishOperator(op)
@@ -427,37 +441,41 @@ export function SearchPanel(props: Props) {
                     const suggestions = suggestionsByField[f.name] ?? []
 
                     return (
-                      <div key={f.name} className="space-y-1">
-                        <div className="text-xs text-zinc-700">
-                          <span className="font-medium">{f.label}</span> <span className="text-zinc-400">({typeLabel(f.typeGroup)})</span>
+                      <div key={f.name} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label>
+                            {f.label} <span className="text-zinc-400 font-normal">({typeLabel(f.typeGroup)})</span>
+                          </Label>
+                          <span className="text-xs text-zinc-500">
+                            {operatorsFor(f.typeGroup).find((x) => x.value === op)?.label ?? op}
+                          </span>
                         </div>
 
                         <div className="relative flex items-stretch gap-2">
                           {!showNull && !showBetween && (
-                            <>
-                              <input
-                              className="w-full rounded border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
-                              placeholder={`Digite ${f.label.toLowerCase()}…`}
-                              value={values[f.name] ?? ""}
-                              list={datalistId}
-                              onChange={(e) => {
-                                const v = e.target.value
-                                setValues((s) => ({ ...s, [f.name]: v }))
-                                requestSuggestions(f.name, v)
-                              }}
-                            />
+                            <div className="flex-1">
+                              <Input
+                                placeholder={`Digite ${f.label.toLowerCase()}…`}
+                                value={values[f.name] ?? ""}
+                                list={datalistId}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setValues((s) => ({ ...s, [f.name]: v }))
+                                  requestSuggestions(f.name, v)
+                                }}
+                              />
                               <datalist id={datalistId}>
                                 {suggestions.map((sug) => (
                                   <option key={sug} value={sug} />
                                 ))}
                               </datalist>
-                            </>
+                            </div>
                           )}
 
                           {!showNull && showBetween && (
                             <div className="flex w-full gap-2">
-                              <input
-                                className="w-1/2 rounded border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+                              <Input
+                                className="w-1/2"
                                 placeholder="De…"
                                 value={values[f.name] ?? ""}
                                 list={datalistId}
@@ -467,8 +485,8 @@ export function SearchPanel(props: Props) {
                                   requestSuggestions(f.name, v)
                                 }}
                               />
-                              <input
-                                className="w-1/2 rounded border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+                              <Input
+                                className="w-1/2"
                                 placeholder="Até…"
                                 value={values2[f.name] ?? ""}
                                 onChange={(e) => setValues2((s) => ({ ...s, [f.name]: e.target.value }))}
@@ -482,31 +500,32 @@ export function SearchPanel(props: Props) {
                           )}
 
                           {showNull && (
-                            <div className="w-full rounded border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
+                            <div className="flex h-10 w-full items-center rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-500">
                               (sem valor)
                             </div>
                           )}
 
-                          <button
-                            type="button"
-                            className="shrink-0 rounded border border-zinc-200 bg-white px-2 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="shrink-0"
                             title="Operador"
                             onClick={() => setOpenOperatorFor((cur) => (cur === f.name ? null : f.name))}
                           >
-                            {gearIcon("h-5 w-5")}
-                          </button>
+                            {gearIcon("h-4 w-4")}
+                          </Button>
 
                           {openOperatorFor === f.name && (
-                            <div className="absolute right-0 top-full z-10 mt-2 w-56 overflow-hidden rounded border border-zinc-200 bg-white shadow">
+                            <Card className="absolute right-0 top-full z-10 mt-2 w-56 overflow-hidden p-0 shadow-lg">
                               <div className="max-h-64 overflow-auto py-1">
                                 {operatorsFor(f.typeGroup).map((o) => (
                                   <button
                                     key={o.value}
                                     type="button"
-                                    className={
-                                      "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-zinc-50 " +
-                                      (op === o.value ? "text-zinc-900 font-medium" : "text-zinc-700")
-                                    }
+                                    className={cn(
+                                      "flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-zinc-50",
+                                      op === o.value ? "bg-zinc-50 font-medium text-zinc-900" : "text-zinc-700"
+                                    )}
                                     onClick={() => {
                                       setOperators((s) => ({ ...s, [f.name]: o.value }))
                                       setOpenOperatorFor(null)
@@ -516,19 +535,16 @@ export function SearchPanel(props: Props) {
                                   </button>
                                 ))}
                               </div>
-                            </div>
+                            </Card>
                           )}
                         </div>
-
-                        <div className="text-xs text-zinc-500">Operador: {operatorsFor(f.typeGroup).find((x) => x.value === op)?.label ?? op}</div>
                       </div>
                     )
                   })}
 
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      type="button"
-                      className="flex-1 rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+                  <div className="flex gap-2 pt-4">
+                    <Button
+                      className="flex-1"
                       onClick={() => {
                         if (!selectedLayer) return
                         if (selectedLayer.serviceType !== "WFS") {
@@ -633,18 +649,20 @@ export function SearchPanel(props: Props) {
                       disabled={searchLoading}
                     >
                       {searchLoading ? "Pesquisando…" : "Pesquisar"}
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+                    </Button>
+                    <Button
+                      variant="outline"
                       onClick={onClear}
                     >
                       Limpar
-                    </button>
+                    </Button>
                   </div>
 
                   {searchError && (
-                    <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{searchError}</div>
+                    <Alert variant="destructive">
+                      <AlertTitle>Erro</AlertTitle>
+                      <AlertDescription>{searchError}</AlertDescription>
+                    </Alert>
                   )}
                 </div>
               )}

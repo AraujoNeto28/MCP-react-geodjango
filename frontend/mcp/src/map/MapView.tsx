@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { createRoot, type Root } from "react-dom/client"
 
 import Map from "ol/Map"
 import View from "ol/View"
@@ -9,6 +10,7 @@ import Overlay from "ol/Overlay"
 import type { RootGroupDto } from "../features/layers/types"
 import { buildLayersFromTree, type GeoServerLayerAvailability, type LayerVisibilityState } from "./olLayerFactory"
 import { buildPopupModel } from "./popupTemplate"
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card"
 
 type Props = {
   tree: RootGroupDto[]
@@ -18,11 +20,34 @@ type Props = {
   onMapReady?: (map: Map | null) => void
 }
 
+function PopupContent({ model }: { model: ReturnType<typeof buildPopupModel> }) {
+  if (!model) return null
+  return (
+    <Card className="w-[320px] max-w-[80vw] shadow-md border-zinc-200">
+      <CardHeader className="p-3 pb-2">
+        <CardTitle className="text-sm font-semibold leading-tight">{model.title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-3 pt-0 space-y-1">
+        {model.rows.map((row, i) => (
+          <div key={i} className="flex gap-2">
+            <div className="w-24 shrink-0 text-xs font-medium text-zinc-500">{row.label}</div>
+            <div className="min-w-0 flex-1 break-words text-sm text-zinc-900">{row.value}</div>
+          </div>
+        ))}
+        {model.rows.length === 0 && (
+          <div className="text-sm text-zinc-500">Sem campos configurados no popupTemplate.</div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export function MapView(props: Props) {
   const targetRef = useRef<HTMLDivElement | null>(null)
   const [mapInstance, setMapInstance] = useState<Map | null>(null)
   const popupOverlayRef = useRef<Overlay | null>(null)
   const popupElementRef = useRef<HTMLDivElement | null>(null)
+  const popupRootRef = useRef<Root | null>(null)
 
   const layersBundle = useMemo(
     // Important: don't rebuild OL layers on availability updates, or we drop loaded vector features.
@@ -78,6 +103,10 @@ export function MapView(props: Props) {
     map.addOverlay(overlay)
 
     return () => {
+      if (popupRootRef.current) {
+        popupRootRef.current.unmount()
+        popupRootRef.current = null
+      }
       if (popupOverlayRef.current) map.removeOverlay(popupOverlayRef.current)
       popupOverlayRef.current = null
       popupElementRef.current = null
@@ -126,45 +155,10 @@ export function MapView(props: Props) {
       const model = buildPopupModel(popupTemplate, feature?.getProperties?.() ?? {})
       if (!model) return
 
-      while (popupEl.firstChild) popupEl.removeChild(popupEl.firstChild)
-
-      const card = document.createElement("div")
-      card.className = "w-[320px] max-w-[80vw] rounded border border-zinc-200 bg-white p-3 shadow"
-
-      const title = document.createElement("div")
-      title.className = "mb-2 text-sm font-semibold text-zinc-900"
-      title.textContent = model.title
-      card.appendChild(title)
-
-      const body = document.createElement("div")
-      body.className = "space-y-1"
-
-      for (const row of model.rows) {
-        const line = document.createElement("div")
-        line.className = "flex gap-2"
-
-        const label = document.createElement("div")
-        label.className = "w-32 shrink-0 text-xs font-medium text-zinc-600"
-        label.textContent = row.label
-
-        const value = document.createElement("div")
-        value.className = "min-w-0 flex-1 break-words text-sm text-zinc-900"
-        value.textContent = row.value
-
-        line.appendChild(label)
-        line.appendChild(value)
-        body.appendChild(line)
+      if (!popupRootRef.current) {
+        popupRootRef.current = createRoot(popupEl)
       }
-
-      if (!model.rows.length) {
-        const empty = document.createElement("div")
-        empty.className = "text-sm text-zinc-600"
-        empty.textContent = "Sem campos configurados no popupTemplate."
-        body.appendChild(empty)
-      }
-
-      card.appendChild(body)
-      popupEl.appendChild(card)
+      popupRootRef.current.render(<PopupContent model={model} />)
     }
 
     const onClick = (evt: any) => {

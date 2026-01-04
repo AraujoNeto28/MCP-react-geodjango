@@ -90,52 +90,13 @@ def list_workspaces() -> list[str]:
 def list_layers_in_workspace(workspace: str, service_type: str) -> list[dict[str, str]]:
     cfg = _get_config()
 
+    # Normaliza service_type (apenas para validação básica, mas usaremos estratégia genérica)
     service_type = (service_type or "").upper()
-    if service_type not in {"WFS", "WMS"}:
-        raise GeoServerError("service_type must be WFS or WMS")
-
-    if service_type == "WFS":
-        return _list_wfs_featuretypes(cfg, workspace)
-
-    return _list_wms_layers(cfg, workspace)
-
-
-def _list_wfs_featuretypes(cfg: GeoServerConfig, workspace: str) -> list[dict[str, str]]:
-    feature_names: set[str] = set()
-
-    # Prefer datastores -> featuretypes (mais compatível)
-    try:
-        ds_data = _fetch_json(cfg.rest_base + f"/workspaces/{workspace}/datastores.json")
-        datastores = (((ds_data or {}).get("dataStores") or {}).get("dataStore")) or []
-        for ds in datastores:
-            ds_name = (ds or {}).get("name")
-            if not ds_name:
-                continue
-            ft_data = _fetch_json(cfg.rest_base + f"/workspaces/{workspace}/datastores/{ds_name}/featuretypes.json")
-            fts = (((ft_data or {}).get("featureTypes") or {}).get("featureType")) or []
-            for ft in fts:
-                name = (ft or {}).get("name")
-                if name:
-                    feature_names.add(name)
-    except GeoServerError:
-        # Fallback: algumas versões expõem diretamente
-        ft_data = _fetch_json(cfg.rest_base + f"/workspaces/{workspace}/featuretypes.json")
-        fts = (((ft_data or {}).get("featureTypes") or {}).get("featureType")) or []
-        for ft in fts:
-            name = (ft or {}).get("name")
-            if name:
-                feature_names.add(name)
-
-    return [
-        {"name": n, "qualifiedName": f"{workspace}:{n}", "workspace": workspace}
-        for n in sorted(feature_names)
-    ]
-
-
-def _list_wms_layers(cfg: GeoServerConfig, workspace: str) -> list[dict[str, str]]:
+    
     layer_names: set[str] = set()
 
-    # Tentativa 1: endpoint por workspace
+    # Estratégia 1: /workspaces/{workspace}/layers.json
+    # Lista todas as camadas publicadas (WMS e WFS) no workspace.
     try:
         data = _fetch_json(cfg.rest_base + f"/workspaces/{workspace}/layers.json")
         layers = (((data or {}).get("layers") or {}).get("layer")) or []
@@ -143,7 +104,6 @@ def _list_wms_layers(cfg: GeoServerConfig, workspace: str) -> list[dict[str, str
             name = (layer or {}).get("name")
             if not name:
                 continue
-            # Pode vir como ws:layer ou só layer
             if ":" in name:
                 ws, lname = name.split(":", 1)
                 if ws == workspace and lname:
@@ -151,21 +111,51 @@ def _list_wms_layers(cfg: GeoServerConfig, workspace: str) -> list[dict[str, str
             else:
                 layer_names.add(name)
     except GeoServerError:
-        # Tentativa 2: lista global e filtra por prefixo
-        data = _fetch_json(cfg.rest_base + "/layers.json")
-        layers = (((data or {}).get("layers") or {}).get("layer")) or []
-        for layer in layers:
-            name = (layer or {}).get("name")
-            if not name or ":" not in name:
-                continue
-            ws, lname = name.split(":", 1)
-            if ws == workspace and lname:
-                layer_names.add(lname)
+        pass
+
+    # Estratégia 2: /layers.json (global) e filtrar por prefixo
+    # Útil se o endpoint de workspace falhar ou não estiver acessível
+    if not layer_names:
+        try:
+            data = _fetch_json(cfg.rest_base + "/layers.json")
+            layers = (((data or {}).get("layers") or {}).get("layer")) or []
+            for layer in layers:
+                name = (layer or {}).get("name")
+                if not name or ":" not in name:
+                    continue
+                ws, lname = name.split(":", 1)
+                if ws == workspace and lname:
+                    layer_names.add(lname)
+        except GeoServerError:
+            pass
+
+    # Estratégia 3: /workspaces/{workspace}/featuretypes.json (apenas se WFS)
+    # Tenta buscar FeatureTypes diretamente se ainda não achou nada
+    if not layer_names and service_type == "WFS":
+        try:
+            ft_data = _fetch_json(cfg.rest_base + f"/workspaces/{workspace}/featuretypes.json")
+            fts = (((ft_data or {}).get("featureTypes") or {}).get("featureType")) or []
+            for ft in fts:
+                name = (ft or {}).get("name")
+                if name:
+                    layer_names.add(name)
+        except GeoServerError:
+            pass
 
     return [
         {"name": n, "qualifiedName": f"{workspace}:{n}", "workspace": workspace}
         for n in sorted(layer_names)
     ]
+
+
+def _list_wfs_featuretypes(cfg: GeoServerConfig, workspace: str) -> list[dict[str, str]]:
+    # Deprecated: merged into list_layers_in_workspace
+    return []
+
+
+def _list_wms_layers(cfg: GeoServerConfig, workspace: str) -> list[dict[str, str]]:
+    # Deprecated: merged into list_layers_in_workspace
+    return []
 
 
 def get_layer_attributes(workspace: str, layer_name: str) -> list[dict[str, str]]:

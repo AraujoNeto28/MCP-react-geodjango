@@ -17,8 +17,16 @@ export function ensureProjectionsRegistered() {
     "+proj=tmerc +lat_0=0 +lon_0=-51 +k=0.999995 +x_0=300000 +y_0=5000000 +ellps=GRS80 +units=m +no_defs +type=crs",
   )
 
+  // EPSG:4674 — SIRGAS 2000 (Geographic)
+  // Source: User provided
+  proj4.defs(
+    "EPSG:4674",
+    "+proj=longlat +ellps=GRS80 +no_defs +type=crs",
+  )
+
   register(proj4)
 
   // Touch the projection so OL creates and caches it.
   getProjection(EPSG_10665)
+  getProjection("EPSG:4674")
 }

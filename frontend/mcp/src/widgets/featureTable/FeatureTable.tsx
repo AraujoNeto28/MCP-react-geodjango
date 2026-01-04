@@ -10,6 +10,8 @@ import GeoJSON from "ol/format/GeoJSON"
 
 import type { LayerDto } from "../../features/layers/types"
 import { readGeoJsonFeaturesRobust } from "../../map/geojsonUtils"
+import { Button } from "../../components/ui/Button"
+import { Checkbox } from "../../components/ui/Checkbox"
 
 type Props = {
   map: Map | null
@@ -32,16 +34,13 @@ function tableIcon(className?: string) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <path d="M4 5h16v14H4z" />
-      <path d="M4 10h16" />
-      <path d="M9 5v14" />
-      <path d="M15 5v14" />
+      <path d="M3 9H21M3 15H21M9 9L9 20M15 9L15 20M6.2 20H17.8C18.9201 20 19.4802 20 19.908 19.782C20.2843 19.5903 20.5903 19.2843 20.782 18.908C21 18.4802 21 17.9201 21 16.8V7.2C21 6.0799 21 5.51984 20.782 5.09202C20.5903 4.71569 20.2843 4.40973 19.908 4.21799C19.4802 4 18.9201 4 17.8 4H6.2C5.0799 4 4.51984 4 4.09202 4.21799C3.71569 4.40973 3.40973 4.71569 3.21799 5.09202C3 5.51984 3 6.07989 3 7.2V16.8C3 17.9201 3 18.4802 3.21799 18.908C3.40973 19.2843 3.71569 19.5903 4.09202 19.782C4.51984 20 5.07989 20 6.2 20Z" />
     </svg>
   )
 }
@@ -553,35 +552,38 @@ export function FeatureTable(props: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {!props.minimized ? (
-            <button
-              type="button"
-              className="rounded border border-zinc-200 p-1 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-600"
               title="Minimizar"
               onClick={props.onMinimize}
             >
               {minusIcon("h-4 w-4")}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              className="rounded border border-zinc-200 p-1 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-zinc-600"
               title="Maximizar"
               onClick={props.onMaximize}
             >
               {expandIcon("h-4 w-4")}
-            </button>
+            </Button>
           )}
 
-          <button
-            type="button"
-            className="rounded border border-zinc-200 p-1 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-zinc-600 hover:text-red-600 hover:bg-red-50"
             title="Fechar"
             onClick={props.onClose}
           >
             {closeIcon("h-4 w-4")}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -634,8 +636,7 @@ export function FeatureTable(props: Props) {
                       onMouseLeave={() => setHoveredKey((k) => (k === fKey ? null : k))}
                     >
                       <td className="border-b border-zinc-100 px-2 py-2">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={checked}
                           onChange={(e) =>
                             setSelectedByKey((s) => ({
@@ -647,14 +648,15 @@ export function FeatureTable(props: Props) {
                       </td>
                       <td className="border-b border-zinc-100 px-2 py-2 text-zinc-600">{idx + 1}</td>
                       <td className="border-b border-zinc-100 px-2 py-2">
-                        <button
-                          type="button"
-                          className="rounded border border-zinc-200 p-1 text-zinc-600 hover:bg-white hover:text-zinc-900"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-zinc-600"
                           title="Zoom"
                           onClick={() => onZoom(f)}
                         >
                           {zoomIcon("h-4 w-4")}
-                        </button>
+                        </Button>
                       </td>
                       {columns.map((c) => (
                         <td key={c} className="border-b border-zinc-100 px-2 py-2 text-zinc-900">

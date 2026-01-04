@@ -1,7 +1,8 @@
 import json
 
+from django.db import transaction
 from django.http import HttpResponseNotAllowed, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import csrf_exempt
 
 from .geoserver import (
@@ -14,6 +15,10 @@ from .geoserver import (
     suggest_layer_field_values,
 )
 from .models import Layer, RootGroup, ThematicGroup
+
+
+def tree_builder_view(request):
+    return render(request, "layers_geoserver/tree_builder.html")
 
 
 def _json_error(message: str, status: int = 400):
@@ -71,6 +76,119 @@ def _serialize_layer(layer: Layer):
         "popupTemplate": layer.popup_template,
         "styleConfig": layer.style_config,
     }
+
+
+@csrf_exempt
+def save_tree(request):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    data = _parse_json_body(request)
+    if data is None:
+        return _json_error("Invalid JSON")
+
+    # Ensure data is a list
+    if not isinstance(data, list):
+        data = [data]
+
+    try:
+        with transaction.atomic():
+            for root_data in data:
+                # Create or Update RootGroup
+                root_group, created = RootGroup.objects.update_or_create(
+                    id=root_data["id"],
+                    defaults={
+                        "title": root_data["title"],
+                        "service_type": root_data["service_type"],
+                        "workspace": root_data["workspace"],
+                        "visible": root_data["visible"],
+                        "order": root_data["order"],
+                    }
+                )
+                
+                # Process Root Layers
+                # First, we might want to clear existing layers/groups if we want a full sync?
+                # The current admin logic is additive/update-only. It doesn't delete removed items.
+                # For a "Save" button in an editor, users might expect deletions to persist.
+                # However, implementing full sync (delete missing) is riskier without explicit confirmation.
+                # Given the user asked to "save", I'll stick to the admin logic (update_or_create) for now,
+                # as it matches the "Import JSON" behavior the user is familiar with.
+                # If they delete something in the UI, it won't be deleted in DB with this logic.
+                # But let's follow the requested "Import JSON" logic pattern first.
+                
+                # Actually, if I'm editing a tree, I probably want to replace the structure.
+                # But let's stick to the safe update_or_create for now to avoid accidental data loss.
+                
+                for layer_data in root_data.get("layers", []):
+                    layer_id = layer_data.get("id")
+                    if not layer_id:
+                        layer_id = f"{root_group.id}_{layer_data['layer_name']}_{layer_data['order']}"
+                    
+                    Layer.objects.update_or_create(
+                        id=layer_id,
+                        defaults={
+                            "title": layer_data["title"],
+                            "layer_name": layer_data["layer_name"],
+                            "workspace": layer_data["workspace"],
+                            "service_type": layer_data["service_type"],
+                            "native_crs": layer_data.get("native_crs"),
+                            "visible": layer_data["visible"],
+                            "order": layer_data["order"],
+                            "geometry_type": layer_data["geometry_type"],
+                            "min_zoom": layer_data.get("min_zoom"),
+                            "queryable": layer_data["queryable"],
+                            "queryable_fields": layer_data.get("queryable_fields"),
+                            "table_fields": layer_data.get("table_fields"),
+                            "filter": layer_data.get("filter"),
+                            "popup_template": layer_data.get("popup_template"),
+                            "style_config": layer_data.get("style_config"),
+                            "root_group": root_group,
+                            "thematic_group": None
+                        }
+                    )
+
+                # Process Thematic Groups
+                for group_data in root_data.get("thematic_groups", []):
+                    thematic_group, _ = ThematicGroup.objects.update_or_create(
+                        id=group_data["id"],
+                        defaults={
+                            "title": group_data["title"],
+                            "visible": group_data["visible"],
+                            "order": group_data["order"],
+                            "root_group": root_group
+                        }
+                    )
+
+                    for layer_data in group_data.get("layers", []):
+                        layer_id = layer_data.get("id")
+                        if not layer_id:
+                            layer_id = f"{thematic_group.id}_{layer_data['layer_name']}_{layer_data['order']}"
+
+                        Layer.objects.update_or_create(
+                            id=layer_id,
+                            defaults={
+                                "title": layer_data["title"],
+                                "layer_name": layer_data["layer_name"],
+                                "workspace": layer_data["workspace"],
+                                "service_type": layer_data["service_type"],
+                                "native_crs": layer_data.get("native_crs"),
+                                "visible": layer_data["visible"],
+                                "order": layer_data["order"],
+                                "geometry_type": layer_data["geometry_type"],
+                                "min_zoom": layer_data.get("min_zoom"),
+                                "queryable": layer_data["queryable"],
+                                "queryable_fields": layer_data.get("queryable_fields"),
+                                "table_fields": layer_data.get("table_fields"),
+                                "filter": layer_data.get("filter"),
+                                "popup_template": layer_data.get("popup_template"),
+                                "style_config": layer_data.get("style_config"),
+                                "root_group": root_group,
+                                "thematic_group": thematic_group
+                            }
+                        )
+        return JsonResponse({"status": "success", "message": "Tree saved successfully"})
+    except Exception as exc:
+        return _json_error(str(exc), status=500)
 
 
 @csrf_exempt

@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='layers_geoserver' %}">Layers Geoserver</a>
+&rsaquo; <a href="{% url 'admin:layers_geoserver_rootgroup_changelist' %}">Root Groups</a>
+&rsaquo; Importar JSON
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div>
+            <p>Selecione o arquivo JSON gerado pelo Tree Builder para importar a estrutura de camadas.</p>
+            <p class="warning" style="color: red; font-weight: bold;">Atenção: IDs duplicados serão atualizados ou ignorados dependendo da lógica.</p>
+            <br>
+            <input type="file" name="json_file" accept=".json" required>
+        </div>
+        <br>
+        <div class="submit-row">
+            <input type="submit" value="Importar" class="default">
+        </div>
+    </form>
+</div>
+{% endblock %}

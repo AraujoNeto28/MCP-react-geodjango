@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Árvore de Camadas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v8.2.0/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@v8.2.0/dist/ol.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .tree-line { border-left: 1px dashed #cbd5e1; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body>
+    {% verbatim %}
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-800 text-white p-4 shadow-md flex justify-between items-center z-10">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <span class="material-icons">account_tree</span>
+                Editor de Árvore de Camadas
+            </h1>
+            <div class="flex gap-2">
+                <button @click="saveTree" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2 shadow transition-colors">
+                    <span class="material-icons">save</span>
+                    Salvar
+                </button>
+                <button @click="exportJson" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center gap-2 shadow transition-colors">
+                    <span class="material-icons">download</span>
+                    Exportar JSON
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 flex overflow-hidden">
+            <!-- Sidebar: Tree Structure -->
+            <div class="w-1/3 bg-white border-r border-gray-200 flex flex-col overflow-y-auto shadow-inner">
+                <div class="p-4 border-b border-gray-200 bg-gray-50">
+                    <h2 class="font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                        <span class="material-icons text-gray-500">settings</span>
+                        Configuração da Raiz
+                    </h2>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 uppercase">Tipo de Serviço</label>
+                            <select v-model="root.service_type" class="w-full mt-1 border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="WFS">WFS</option>
+                                <option value="WMS">WMS</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 uppercase">Workspace</label>
+                            <select v-model="root.workspace" @change="loadLayers" class="w-full mt-1 border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="" disabled>Selecione...</option>
+                                <option v-for="ws in workspaces" :key="ws" :value="ws">{{ ws }}</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 uppercase">Título da Árvore (ID)</label>
+                            <input type="text" v-model="root.id" placeholder="ex: infovia" class="w-full mt-1 border rounded p-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 uppercase">Título Exibição</label>
+                            <input type="text" v-model="root.title" placeholder="ex: INFOVIA" class="w-full mt-1 border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 flex-1">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="font-semibold text-gray-700">Estrutura</h2>
+                        <div class="flex gap-1">
+                            <button @click="addThematicGroup" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors" title="Adicionar Grupo Temático">
+                                + Grupo
+                            </button>
+                            <button @click="addRootLayer" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 transition-colors" title="Adicionar Camada na Raiz">
+                                + Camada
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tree Visualization -->
+                    <div class="space-y-2 text-sm">
+                        <!-- Root Layers -->
+                        <div v-if="root.layers.length > 0" class="pl-2">
+                            <div class="text-xs text-gray-400 font-medium mb-1 uppercase">Camadas da Raiz</div>
+                            <div v-for="(layer, idx) in root.layers" :key="layer.tempId" 
+                                 class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-pointer group transition-colors"
+                                 :class="{'bg-blue-50 border-blue-200 border shadow-sm': selectedLayer?.tempId === layer.tempId}"
+                                 @click="selectLayer(layer, 'root', idx)">
+                                <span class="material-icons text-gray-400 text-sm">layers</span>
+                                <span class="truncate flex-1">{{ layer.title || 'Nova Camada' }}</span>
+                                <button @click.stop="removeLayer('root', idx)" class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span class="material-icons text-sm">delete</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Thematic Groups -->
+                        <div v-for="(group, gIdx) in root.thematic_groups" :key="group.tempId" class="border border-gray-200 rounded bg-gray-50 overflow-hidden">
+                            <div class="p-2 bg-gray-100 flex items-center gap-2 group hover:bg-gray-200 transition-colors">
+                                <span class="material-icons text-yellow-600 text-sm">folder</span>
+                                <input type="text" v-model="group.title" class="bg-transparent border-none focus:ring-0 p-0 text-sm font-medium flex-1 text-gray-700" placeholder="Nome do Grupo">
+                                <button @click="addLayerToGroup(gIdx)" class="text-blue-500 hover:text-blue-700" title="Adicionar Camada">
+                                    <span class="material-icons text-sm">add_circle</span>
+                                </button>
+                                <button @click="removeGroup(gIdx)" class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span class="material-icons text-sm">delete</span>
+                                </button>
+                            </div>
+                            
+                            <div class="pl-4 pr-2 py-2 space-y-1 bg-white">
+                                <div v-if="group.layers.length === 0" class="text-xs text-gray-400 italic p-1">Nenhuma camada</div>
+                                <div v-for="(layer, lIdx) in group.layers" :key="layer.tempId"
+                                     class="flex items-center gap-2 p-1.5 rounded hover:bg-gray-100 cursor-pointer group transition-colors"
+                                     :class="{'bg-blue-50 border-blue-200 border shadow-sm': selectedLayer?.tempId === layer.tempId}"
+                                     @click="selectLayer(layer, 'group', lIdx, gIdx)">
+                                    <span class="material-icons text-gray-400 text-sm">layers</span>
+                                    <span class="truncate flex-1">{{ layer.title || 'Nova Camada' }}</span>
+                                    <button @click.stop="removeLayer('group', lIdx, gIdx)" class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span class="material-icons text-sm">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content: Layer Editor -->
+            <div class="flex-1 bg-gray-50 p-6 overflow-y-auto">
+                <div v-if="selectedLayer" class="bg-white rounded shadow-sm border border-gray-200 max-w-4xl mx-auto">
+                    <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t">
+                        <h3 class="font-bold text-gray-700 flex items-center gap-2">
+                            <span class="material-icons text-blue-600">edit</span>
+                            Editar Camada
+                        </h3>
+                        <span class="text-xs text-gray-400 font-mono">{{ selectedLayer.tempId }}</span>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <!-- Basic Info -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Camada (GeoServer)</label>
+                                <select v-model="selectedLayer.layer_name" @change="onLayerNameChange" class="w-full border rounded p-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <option value="" disabled>Selecione uma camada do workspace...</option>
+                                    <option v-for="l in availableLayers" :key="l.name" :value="l.name">{{ l.name }}</option>
+                                </select>
+                                <p v-if="availableLayers.length === 0" class="text-xs text-red-500 mt-1">Nenhuma camada carregada. Selecione um workspace válido.</p>
+                            </div>
+
+                            <div class="col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Título de Exibição</label>
+                                <input type="text" v-model="selectedLayer.title" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ID Único</label>
+                                <input type="text" v-model="selectedLayer.id" class="w-full border rounded p-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Geometria (Automático)</label>
+                                <input type="text" v-model="selectedLayer.geometry_type" readonly class="w-full border rounded p-2 bg-gray-100 text-gray-500 cursor-not-allowed">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Native CRS (Automático)</label>
+                                <input type="text" v-model="selectedLayer.native_crs" readonly class="w-full border rounded p-2 bg-gray-100 text-gray-500 cursor-not-allowed">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Min Zoom</label>
+                                <input type="number" v-model.number="selectedLayer.min_zoom" class="w-full border rounded p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+
+                            <div class="flex items-center pt-6">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" v-model="selectedLayer.queryable" class="rounded text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm font-medium text-gray-700">Queryable (Consultável)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Fields Configuration -->
+                        <div class="border-t pt-4">
+                            <h4 class="font-semibold text-gray-600 text-sm uppercase mb-3">Campos Disponíveis</h4>
+                            <div class="overflow-x-auto border rounded max-h-96 overflow-y-auto">
+                                <table class="min-w-full divide-y divide-gray-200 text-sm relative">
+                                    <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">Campo (Name)</th>
+                                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3 bg-gray-50">Label</th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                                                <div class="flex flex-col items-center gap-1">
+                                                    <span>Queryable</span>
+                                                    <input type="checkbox" @change="toggleAll('isQueryable', $event)" class="rounded text-blue-600" title="Marcar/Desmarcar Todos">
+                                                </div>
+                                            </th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                                                <div class="flex flex-col items-center gap-1">
+                                                    <span>Table</span>
+                                                    <input type="checkbox" @change="toggleAll('isTable', $event)" class="rounded text-blue-600" title="Marcar/Desmarcar Todos">
+                                                </div>
+                                            </th>
+                                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                                                <div class="flex flex-col items-center gap-1">
+                                                    <span>Popup Body</span>
+                                                    <input type="checkbox" @change="toggleAll('isPopupBody', $event)" class="rounded text-blue-600" title="Marcar/Desmarcar Todos">
+                                                </div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-if="layerAttributes.length === 0">
+                                            <td colspan="5" class="px-3 py-4 text-center text-gray-400 italic">
+                                                Selecione uma camada para carregar os campos.
+                                            </td>
+                                        </tr>
+                                        <tr v-for="attr in layerAttributes" :key="attr.name">
+                                            <td class="px-3 py-2 font-mono text-xs text-gray-700">{{ attr.name }}</td>
+                                            <td class="px-3 py-2">
+                                                <input type="text" v-model="attr.label" class="w-full border rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 outline-none">
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <input type="checkbox" v-model="attr.isQueryable" @change="updateFieldsJson" class="rounded text-blue-600">
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <input type="checkbox" v-model="attr.isTable" @change="updateFieldsJson" class="rounded text-blue-600">
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <input type="checkbox" v-model="attr.isPopupBody" @change="updateFieldsJson" class="rounded text-blue-600">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Popup Config & Preview -->
+                        <div class="border-t pt-4">
+                            <h4 class="font-semibold text-gray-600 text-sm uppercase mb-3">Configuração do Popup</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Left: Config -->
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Título do Popup (Template)</label>
+                                        <div class="flex gap-2 mb-2">
+                                            <input type="text" v-model="popupTitleTemplate" @input="updateFieldsJson" class="flex-1 border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: {nome} - {codigo}">
+                                        </div>
+                                        <div class="flex flex-wrap gap-1">
+                                            <span class="text-xs text-gray-400 mr-1 flex items-center">Inserir:</span>
+                                            <button v-for="attr in layerAttributes" :key="attr.name" @click="insertFieldToTitle(attr.name)" 
+                                                    class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 transition-colors">
+                                                {{ attr.name }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Right: Preview -->
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Preview</label>
+                                    <div class="border rounded shadow-sm bg-white overflow-hidden">
+                                        <div class="bg-blue-600 text-white px-3 py-2 font-bold text-sm">
+                                            {{ previewTitle || 'Título do Popup' }}
+                                        </div>
+                                        <div class="p-3 text-sm space-y-1 max-h-48 overflow-y-auto">
+                                            <div v-if="previewFields.length === 0" class="text-gray-400 italic text-xs">Nenhum campo no corpo</div>
+                                            <div v-for="field in previewFields" :key="field.name" class="grid grid-cols-3 gap-2 border-b border-gray-100 last:border-0 py-1">
+                                                <span class="font-semibold text-gray-600 col-span-1">{{ field.label }}:</span>
+                                                <span class="text-gray-800 col-span-2">Valor Exemplo</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Style Config -->
+                        <div class="border-t pt-4">
+                            <h4 class="font-semibold text-gray-600 text-sm uppercase mb-3">Style Config</h4>
+                            <div class="bg-blue-50 border border-blue-100 rounded p-4 space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Type (Automático)</label>
+                                        <input type="text" :value="selectedLayer.geometry_type" readonly class="w-full border rounded p-2 bg-gray-100 text-gray-500 text-sm">
+                                    </div>
+                                </div>
+
+                                <!-- Point Specific -->
+                                <div v-if="selectedLayer.geometry_type === 'Point'" class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Radius</label>
+                                        <input type="number" v-model.number="styleConfig.radius" @input="updateStyleJson" class="w-full border rounded p-2 text-sm">
+                                    </div>
+                                </div>
+
+                                <!-- Colors -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Fill Color</label>
+                                        <div class="flex gap-2">
+                                            <input type="color" v-model="styleConfig.fillColor" @input="updateStyleJson" class="h-9 w-12 p-0 border rounded cursor-pointer">
+                                            <input type="text" v-model="styleConfig.fillColor" @input="updateStyleJson" class="flex-1 border rounded p-2 text-sm font-mono uppercase">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Stroke Color</label>
+                                        <div class="flex gap-2">
+                                            <input type="color" v-model="styleConfig.strokeColor" @input="updateStyleJson" class="h-9 w-12 p-0 border rounded cursor-pointer">
+                                            <input type="text" v-model="styleConfig.strokeColor" @input="updateStyleJson" class="flex-1 border rounded p-2 text-sm font-mono uppercase">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Stroke Width</label>
+                                        <input type="number" step="0.1" v-model.number="styleConfig.strokeWidth" @input="updateStyleJson" class="w-full border rounded p-2 text-sm">
+                                    </div>
+                                </div>
+
+                                <!-- Label Options -->
+                                <div class="border-t border-blue-200 pt-3">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <input type="checkbox" v-model="styleConfig.label.enabled" @change="updateStyleJson" class="rounded text-blue-600">
+                                        <span class="font-medium text-sm text-gray-700">Habilitar Label</span>
+                                    </div>
+
+                                    <div v-if="styleConfig.label.enabled" class="space-y-3 pl-6">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Campo</label>
+                                            <select v-model="styleConfig.label.field" @change="updateStyleJson" class="w-full border rounded p-2 text-sm">
+                                                <option value="">-- selecione --</option>
+                                                <option v-for="attr in layerAttributes" :key="attr.name" :value="attr.name">{{ attr.name }}</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-3 gap-3">
+                                            <div class="col-span-2">
+                                                <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Font</label>
+                                                <input type="text" v-model="styleConfig.label.font" @input="updateStyleJson" placeholder="10px Noto Sans Regular" class="w-full border rounded p-2 text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Color</label>
+                                                <div class="flex gap-1">
+                                                    <input type="color" v-model="styleConfig.label.color" @input="updateStyleJson" class="h-9 w-8 p-0 border rounded cursor-pointer">
+                                                    <input type="text" v-model="styleConfig.label.color" @input="updateStyleJson" class="flex-1 border rounded p-2 text-xs font-mono">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-3 gap-3">
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-500 uppercase mb-1">OffsetY</label>
+                                                <input type="number" v-model.number="styleConfig.label.offsetY" @input="updateStyleJson" class="w-full border rounded p-2 text-sm">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Halo Color</label>
+                                                <div class="flex gap-1">
+                                                    <input type="color" v-model="styleConfig.label.haloColor" @input="updateStyleJson" class="h-9 w-8 p-0 border rounded cursor-pointer">
+                                                    <input type="text" v-model="styleConfig.label.haloColor" @input="updateStyleJson" class="flex-1 border rounded p-2 text-xs font-mono">
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Halo Width</label>
+                                                <input type="number" step="0.1" v-model.number="styleConfig.label.haloWidth" @input="updateStyleJson" class="w-full border rounded p-2 text-sm">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Style Preview -->
+                        <div class="border-t pt-4">
+                            <h4 class="font-semibold text-gray-600 text-sm uppercase mb-3">Preview do Estilo</h4>
+                            <div class="space-y-2">
+                                <button @click="loadPreview" class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                                    <span class="material-icons text-sm">visibility</span>
+                                    Carregar Amostra e Visualizar
+                                </button>
+                                <div id="preview-map" class="w-full h-64 border rounded bg-gray-100 relative">
+                                    <div v-if="!previewLoaded" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
+                                        Clique para carregar o mapa
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Configs (JSON Editors - Hidden/Collapsed by default or kept for Filter) -->
+                        <div class="space-y-4 border-t pt-4">
+                            <h4 class="font-semibold text-gray-600 text-sm uppercase">Filtro (JSON)</h4>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <label class="text-sm font-medium text-gray-700">Filter</label>
+                                    <button @click="formatJson('filter')" class="text-xs text-blue-600 hover:underline">Formatar</button>
+                                </div>
+                                <textarea v-model="jsonInputs.filter" @blur="updateJson('filter')" class="w-full border rounded p-2 font-mono text-xs h-24 bg-gray-50" placeholder="null"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Save Button in Layer Editor -->
+                        <div class="border-t pt-6 flex justify-end">
+                            <button @click="saveTree" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded shadow flex items-center gap-2">
+                                <span class="material-icons">save</span>
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="h-full flex flex-col items-center justify-center text-gray-400">
+                    <span class="material-icons text-6xl mb-4 text-gray-300">touch_app</span>
+                    <p class="text-lg">Selecione uma camada na árvore para editar</p>
+                    <p class="text-sm">Ou adicione novos grupos e camadas usando o menu lateral</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    {% endverbatim %}
+
+    <script>
+        const { createApp, ref, reactive, onMounted, computed } = Vue;
+
+        createApp({
+            setup() {
+                const workspaces = ref([]);
+                const availableLayers = ref([]);
+                const selectedLayer = ref(null);
+                const layerAttributes = ref([]);
+                const popupTitleTemplate = ref('');
+                const previewLoaded = ref(false);
+                let map = null;
+                let vectorLayer = null;
+                
+                // Style Config State
+                const styleConfig = reactive({
+                    radius: 6,
+                    fillColor: '#ff00ff',
+                    strokeColor: '#000000',
+                    strokeWidth: 0.5,
+                    label: {
+                        enabled: false,
+                        field: '',
+                        font: '10px Noto Sans Regular',
+                        color: '#282828',
+                        offsetY: -10,
+                        haloColor: '#ffffff',
+                        haloWidth: 1.5
+                    }
+                });
+
+                // JSON inputs as strings for editing
+                const jsonInputs = reactive({
+                    filter: 'null',
+                });
+
+                const root = reactive({
+                    id: '',
+                    title: '',
+                    service_type: 'WFS',
+                    workspace: '',
+                    visible: true,
+                    order: 0,
+                    layers: [],
+                    thematic_groups: []
+                });
+
+                // Fetch workspaces on mount
+                onMounted(async () => {
+                    try {
+                        const res = await fetch('/api/geoserver/workspaces/');
+                        const data = await res.json();
+                        workspaces.value = data.workspaces || [];
+                    } catch (e) {
+                        console.error("Erro ao carregar workspaces", e);
+                    }
+
+                    // Check for ID in URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const rootId = urlParams.get('id');
+                    if (rootId) {
+                        await loadRootGroup(rootId);
+                    }
+                });
+
+                const loadRootGroup = async (id) => {
+                    try {
+                        // Fetch all trees and find the one we want
+                        // Ideally we should have a specific endpoint, but this works for now
+                        const res = await fetch('/api/layers/tree/');
+                        const data = await res.json();
+                        const found = data.find(r => r.id === id);
+                        
+                        if (found) {
+                            // Map API (camelCase) to Vue State (snake_case)
+                            root.id = found.id;
+                            root.title = found.title;
+                            root.service_type = found.serviceType;
+                            root.workspace = found.workspace;
+                            root.visible = found.visible;
+                            root.order = found.order;
+                            
+                            // Map Layers
+                            root.layers = (found.layers || []).map(mapApiLayerToState);
+                            
+                            // Map Thematic Groups
+                            root.thematic_groups = (found.thematicGroups || []).map(g => ({
+                                tempId: Date.now() + Math.random(),
+                                id: g.id,
+                                title: g.title,
+                                visible: g.visible,
+                                order: g.order,
+                                layers: (g.layers || []).map(mapApiLayerToState)
+                            }));
+
+                            // Load available layers for this workspace
+                            await loadLayers();
+                        }
+                    } catch (e) {
+                        console.error("Erro ao carregar árvore", e);
+                        alert("Erro ao carregar dados da árvore.");
+                    }
+                };
+
+                const mapApiLayerToState = (l) => ({
+                    tempId: Date.now() + Math.random(),
+                    id: l.id,
+                    title: l.title,
+                    layer_name: l.layerName,
+                    workspace: l.workspace,
+                    service_type: l.serviceType,
+                    native_crs: l.nativeCrs,
+                    visible: l.visible,
+                    order: l.order,
+                    geometry_type: l.geometryType,
+                    min_zoom: l.minZoom,
+                    queryable: l.queryable,
+                    queryable_fields: l.queryableFields || [],
+                    table_fields: l.tableFields || [],
+                    filter: l.filter,
+                    popup_template: l.popupTemplate,
+                    style_config: l.styleConfig
+                });
+
+                // Load layers when workspace changes
+                const loadLayers = async () => {
+                    if (!root.workspace) return;
+                    try {
+                        const res = await fetch(`/api/geoserver/workspaces/${root.workspace}/layers/`);
+                        const data = await res.json();
+                        availableLayers.value = data.layers || [];
+                    } catch (e) {
+                        console.error("Erro ao carregar layers", e);
+                    }
+                };
+
+                const onLayerNameChange = async () => {
+                    if (!selectedLayer.value || !selectedLayer.value.layer_name) return;
+                    
+                    // Fetch CRS
+                    try {
+                        const res = await fetch(`/api/geoserver/workspaces/${root.workspace}/layers/${selectedLayer.value.layer_name}/native-crs/`);
+                        const data = await res.json();
+                        if (data.nativeCrs) {
+                            selectedLayer.value.native_crs = data.nativeCrs;
+                        }
+                    } catch (e) {
+                        console.error("Erro ao carregar CRS", e);
+                    }
+
+                    // Fetch attributes
+                    try {
+                        const res = await fetch(`/api/geoserver/workspaces/${root.workspace}/layers/${selectedLayer.value.layer_name}/attributes/`);
+                        const data = await res.json();
+                        
+                        // Reset attributes state
+                        layerAttributes.value = (data.attributes || []).map(attr => ({
+                            name: attr.name,
+                            type: attr.type,
+                            label: attr.name.charAt(0).toUpperCase() + attr.name.slice(1), // Default label
+                            isQueryable: false,
+                            isTable: false,
+                            isPopupBody: false
+                        }));
+                        popupTitleTemplate.value = '';
+
+                        // Try to detect geometry type
+                        const geomAttr = layerAttributes.value.find(a => 
+                            a.type.includes('Point') || a.type.includes('Line') || a.type.includes('Curve') || a.type.includes('Polygon') || a.type.includes('Surface')
+                        );
+                        
+                        if (geomAttr) {
+                            if (geomAttr.type.includes('Point')) selectedLayer.value.geometry_type = 'Point';
+                            else if (geomAttr.type.includes('Line') || geomAttr.type.includes('Curve')) selectedLayer.value.geometry_type = 'LineString';
+                            else if (geomAttr.type.includes('Polygon') || geomAttr.type.includes('Surface')) selectedLayer.value.geometry_type = 'Polygon';
+                        }
+
+                        // Reset style config based on new geometry
+                        updateStyleJson();
+
+                    } catch (e) {
+                        console.error("Erro ao carregar atributos", e);
+                    }
+                };
+
+                const toggleAll = (field, event) => {
+                    const val = event.target.checked;
+                    layerAttributes.value.forEach(attr => attr[field] = val);
+                    updateFieldsJson();
+                };
+
+                const insertFieldToTitle = (fieldName) => {
+                    popupTitleTemplate.value += `{${fieldName}}`;
+                    updateFieldsJson();
+                };
+
+                const previewTitle = computed(() => {
+                    let t = popupTitleTemplate.value;
+                    if (!t) return '';
+                    layerAttributes.value.forEach(attr => {
+                        // Simple replace for preview
+                        t = t.replace(new RegExp(`{${attr.name}}`, 'g'), `[${attr.label}]`);
+                    });
+                    return t;
+                });
+
+                const previewFields = computed(() => {
+                    return layerAttributes.value.filter(a => a.isPopupBody);
+                });
+
+                const updateFieldsJson = () => {
+                    if (!selectedLayer.value) return;
+
+                    // Update queryable_fields
+                    selectedLayer.value.queryable_fields = layerAttributes.value
+                        .filter(a => a.isQueryable)
+                        .map(a => ({ name: a.name, label: a.label }));
+
+                    // Update table_fields
+                    selectedLayer.value.table_fields = layerAttributes.value
+                        .filter(a => a.isTable)
+                        .map(a => ({ name: a.name, label: a.label }));
+
+                    // Update popup_template
+                    const popupFields = layerAttributes.value
+                        .filter(a => a.isPopupBody)
+                        .map(a => ({ field: a.name, label: a.label }));
+
+                    if (popupTitleTemplate.value || popupFields.length > 0) {
+                        selectedLayer.value.popup_template = {
+                            title: popupTitleTemplate.value,
+                            fields: popupFields
+                        };
+                    } else {
+                        selectedLayer.value.popup_template = null;
+                    }
+                };
+
+                const updateStyleJson = () => {
+                    if (!selectedLayer.value) return;
+
+                    const config = {
+                        type: selectedLayer.value.geometry_type,
+                        fillColor: styleConfig.fillColor,
+                        strokeColor: styleConfig.strokeColor,
+                        strokeWidth: styleConfig.strokeWidth
+                    };
+
+                    if (selectedLayer.value.geometry_type === 'Point') {
+                        config.radius = styleConfig.radius;
+                    }
+
+                    if (styleConfig.label.enabled) {
+                        config.label = {
+                            font: styleConfig.label.font,
+                            color: styleConfig.label.color,
+                            field: styleConfig.label.field,
+                            offsetY: styleConfig.label.offsetY,
+                            haloColor: styleConfig.label.haloColor,
+                            haloWidth: styleConfig.label.haloWidth
+                        };
+                        // Add placement for LineString
+                        if (selectedLayer.value.geometry_type === 'LineString') {
+                            config.label.placement = 'line';
+                        }
+                    }
+
+                    // Update map style if loaded
+                    if (vectorLayer) {
+                        vectorLayer.setStyle(createOlStyle(config));
+                    }
+
+                    selectedLayer.value.style_config = config;
+                };
+
+                const createOlStyle = (config) => {
+                    const styles = [];
+                    
+                    const fill = new ol.style.Fill({ color: config.fillColor });
+                    const stroke = new ol.style.Stroke({ 
+                        color: config.strokeColor, 
+                        width: config.strokeWidth 
+                    });
+
+                    if (config.type === 'Point') {
+                        styles.push(new ol.style.Style({
+                            image: new ol.style.Circle({
+                                radius: config.radius || 6,
+                                fill: fill,
+                                stroke: stroke
+                            })
+                        }));
+                    } else {
+                        styles.push(new ol.style.Style({
+                            fill: fill,
+                            stroke: stroke
+                        }));
+                    }
+
+                    if (config.label && config.label.field) {
+                        styles.push(new ol.style.Style({
+                            text: new ol.style.Text({
+                                text: 'Sample Text', // Placeholder, will be replaced by function if needed
+                                font: config.label.font,
+                                fill: new ol.style.Fill({ color: config.label.color }),
+                                stroke: new ol.style.Stroke({
+                                    color: config.label.haloColor,
+                                    width: config.label.haloWidth
+                                }),
+                                offsetY: config.label.offsetY,
+                                placement: config.label.placement || 'point'
+                            })
+                        }));
+                    }
+
+                    // Return function to handle label text from feature
+                    return (feature) => {
+                        if (config.label && config.label.field) {
+                            const labelText = feature.get(config.label.field) || config.label.field;
+                            // Update text content in the last style
+                            styles[styles.length - 1].getText().setText(String(labelText));
+                        }
+                        return styles;
+                    };
+                };
+
+                const loadPreview = async () => {
+                    if (!selectedLayer.value || !selectedLayer.value.layer_name) {
+                        alert("Selecione uma camada válida primeiro.");
+                        return;
+                    }
+
+                    if (!map) {
+                        map = new ol.Map({
+                            target: 'preview-map',
+                            layers: [
+                                new ol.layer.Tile({
+                                    source: new ol.source.OSM()
+                                })
+                            ],
+                            view: new ol.View({
+                                center: [0, 0],
+                                zoom: 2
+                            })
+                        });
+                    }
+
+                    // Fetch sample feature
+                    try {
+                        const typeName = `${root.workspace}:${selectedLayer.value.layer_name}`;
+                        const url = `/api/geoserver/workspaces/${root.workspace}/layers/${selectedLayer.value.layer_name}/bbox/`; // Just to get WMS url base if needed, but we construct WFS manually
+                        
+                        // Construct WFS URL
+                        // Assuming /geoserver/wfs proxy or direct access. 
+                        // Since we are in backend, we might need to proxy or use the configured geoserver URL.
+                        // But the frontend uses a proxy or direct URL. 
+                        // Let's try to use the same logic as FeatureTable but adapted.
+                        // We don't have a direct proxy in this view, but we can use the suggest endpoint logic or similar.
+                        // Actually, let's just fetch 1 feature using a new fetch logic or reuse what we have.
+                        // We don't have a generic "proxy wfs" endpoint here.
+                        // However, we can use the `suggest_layer_field_values` endpoint logic? No, that returns strings.
+                        
+                        // Let's assume the user has access to GeoServer WFS directly or we need to add a proxy.
+                        // The user said "geodjango", maybe we can use a simple WFS call if CORS allows.
+                        // If not, we might need a backend proxy.
+                        // Let's try to fetch from the backend via a new endpoint or just try client side if CORS is open.
+                        // Given the previous context, the frontend accesses GeoServer directly or via proxy.
+                        // Let's try to use the backend to fetch a sample feature to avoid CORS issues if possible,
+                        // OR just use the client side if the user has it set up.
+                        
+                        // Wait, I can't easily add a backend proxy right now without editing views.py again.
+                        // But I can try to use the `geoserver_layer_suggest` endpoint? No.
+                        
+                        // Let's try to fetch client-side first. If it fails, we might need a proxy.
+                        // URL: GEOSERVER_BASE_URL + '/wfs'
+                        // We need the base URL.
+                        
+                        // Let's fetch the workspaces endpoint to see if we can get the base url? No.
+                        // Let's hardcode the relative path if we are serving from same domain, or ask for base url.
+                        // But wait, the `FeatureTable` in React uses `props.geoserverBaseUrl`.
+                        // Here in Django template we don't have it easily unless we inject it.
+                        
+                        // Let's try to infer it or just ask the user? No, that's bad UX.
+                        // I'll add a simple proxy view in `views.py` to fetch 1 feature?
+                        // Or I can use the `geoserver_layer_bbox` to get the WMS URL and guess WFS.
+                        
+                        const bboxRes = await fetch(`/api/geoserver/workspaces/${root.workspace}/layers/${selectedLayer.value.layer_name}/bbox/`);
+                        const bboxData = await bboxRes.json();
+                        let wfsUrl = bboxData.wmsUrl.replace('/wms', '/wfs'); // Rough guess
+                        
+                        if (!wfsUrl) {
+                            alert("Não foi possível determinar a URL do GeoServer.");
+                            return;
+                        }
+
+                        const params = new URLSearchParams({
+                            service: 'WFS',
+                            version: '2.0.0',
+                            request: 'GetFeature',
+                            typeNames: typeName,
+                            outputFormat: 'application/json',
+                            count: 1,
+                            srsName: 'EPSG:3857' // Request in web mercator for easier display
+                        });
+
+                        const res = await fetch(`${wfsUrl}?${params.toString()}`);
+                        if (!res.ok) throw new Error('Erro ao buscar feature');
+                        const geojson = await res.json();
+
+                        if (!geojson.features || geojson.features.length === 0) {
+                            alert("Nenhuma feição encontrada na camada.");
+                            return;
+                        }
+
+                        const features = new ol.format.GeoJSON().readFeatures(geojson);
+                        
+                        if (vectorLayer) {
+                            map.removeLayer(vectorLayer);
+                        }
+
+                        vectorLayer = new ol.layer.Vector({
+                            source: new ol.source.Vector({
+                                features: features
+                            }),
+                            style: createOlStyle(selectedLayer.value.style_config || {})
+                        });
+
+                        map.addLayer(vectorLayer);
+                        
+                        const extent = vectorLayer.getSource().getExtent();
+                        map.getView().fit(extent, { padding: [50, 50, 50, 50], maxZoom: 19 });
+                        
+                        previewLoaded.value = true;
+
+                    } catch (e) {
+                        console.error("Erro no preview", e);
+                        alert("Erro ao carregar preview: " + e.message);
+                    }
+                };
+
+                const createLayer = () => ({
+                    tempId: Date.now() + Math.random(),
+                    id: '',
+                    title: 'Nova Camada',
+                    layer_name: '',
+                    workspace: root.workspace,
+                    service_type: root.service_type,
+                    native_crs: null,
+                    visible: true,
+                    order: 0,
+                    geometry_type: 'Point',
+                    min_zoom: null,
+                    queryable: true,
+                    queryable_fields: [],
+                    table_fields: [],
+                    filter: null,
+                    popup_template: null,
+                    style_config: null
+                });
+
+                const addRootLayer = () => {
+                    if (!root.workspace) {
+                        alert("Selecione um workspace primeiro!");
+                        return;
+                    }
+                    const l = createLayer();
+                    l.order = root.layers.length;
+                    root.layers.push(l);
+                    selectLayer(l, 'root', root.layers.length - 1);
+                };
+
+                const addThematicGroup = () => {
+                    root.thematic_groups.push({
+                        tempId: Date.now() + Math.random(),
+                        id: '',
+                        title: 'Novo Grupo',
+                        visible: true,
+                        order: root.thematic_groups.length,
+                        layers: []
+                    });
+                };
+
+                const addLayerToGroup = (groupIndex) => {
+                    if (!root.workspace) {
+                        alert("Selecione um workspace primeiro!");
+                        return;
+                    }
+                    const l = createLayer();
+                    l.order = root.thematic_groups[groupIndex].layers.length;
+                    root.thematic_groups[groupIndex].layers.push(l);
+                    selectLayer(l, 'group', root.thematic_groups[groupIndex].layers.length - 1, groupIndex);
+                };
+
+                const removeLayer = (type, index, groupIndex = null) => {
+                    if (confirm('Tem certeza que deseja remover esta camada?')) {
+                        if (type === 'root') {
+                            root.layers.splice(index, 1);
+                        } else {
+                            root.thematic_groups[groupIndex].layers.splice(index, 1);
+                        }
+                        if (selectedLayer.value) selectedLayer.value = null;
+                    }
+                };
+
+                const removeGroup = (index) => {
+                    if (confirm('Tem certeza que deseja remover este grupo e todas as suas camadas?')) {
+                        root.thematic_groups.splice(index, 1);
+                    }
+                };
+
+                const selectLayer = (layer, type, index, groupIndex = null) => {
+                    selectedLayer.value = layer;
+                    jsonInputs.filter = JSON.stringify(layer.filter, null, 2);
+                    
+                    // Restore UI state from JSONs
+                    if (layer.style_config) {
+                        styleConfig.radius = layer.style_config.radius || 6;
+                        styleConfig.fillColor = layer.style_config.fillColor || '#ff00ff';
+                        styleConfig.strokeColor = layer.style_config.strokeColor || '#000000';
+                        styleConfig.strokeWidth = layer.style_config.strokeWidth || 0.5;
+                        if (layer.style_config.label) {
+                            styleConfig.label.enabled = true;
+                            styleConfig.label.field = layer.style_config.label.field || '';
+                            styleConfig.label.font = layer.style_config.label.font || '10px Noto Sans Regular';
+                            styleConfig.label.color = layer.style_config.label.color || '#282828';
+                            styleConfig.label.offsetY = layer.style_config.label.offsetY || -10;
+                            styleConfig.label.haloColor = layer.style_config.label.haloColor || '#ffffff';
+                            styleConfig.label.haloWidth = layer.style_config.label.haloWidth || 1.5;
+                        } else {
+                            styleConfig.label.enabled = false;
+                        }
+                    }
+
+                    // If layer has name, fetch attributes to populate table
+                    if (layer.layer_name) {
+                        onLayerNameChange().then(() => {
+                            // Restore checkboxes based on existing JSONs
+                            if (layer.queryable_fields) {
+                                layer.queryable_fields.forEach(f => {
+                                    const attr = layerAttributes.value.find(a => a.name === f.name);
+                                    if (attr) { attr.isQueryable = true; attr.label = f.label; }
+                                });
+                            }
+                            if (layer.table_fields) {
+                                layer.table_fields.forEach(f => {
+                                    const attr = layerAttributes.value.find(a => a.name === f.name);
+                                    if (attr) { attr.isTable = true; attr.label = f.label; }
+                                });
+                            }
+                            if (layer.popup_template) {
+                                // Title
+                                popupTitleTemplate.value = layer.popup_template.title || '';
+                                
+                                // Body
+                                if (layer.popup_template.fields) {
+                                    layer.popup_template.fields.forEach(f => {
+                                        const attr = layerAttributes.value.find(a => a.name === f.field);
+                                        if (attr) { attr.isPopupBody = true; attr.label = f.label; }
+                                    });
+                                }
+                            }
+                        });
+                    } else {
+                        layerAttributes.value = [];
+                    }
+                };
+
+                const updateJson = (field) => {
+                    if (!selectedLayer.value) return;
+                    try {
+                        const val = JSON.parse(jsonInputs[field] || 'null');
+                        selectedLayer.value[field] = val;
+                    } catch (e) {
+                        alert(`Erro no JSON do campo ${field}: ${e.message}`);
+                    }
+                };
+
+                const formatJson = (field) => {
+                    try {
+                        const val = JSON.parse(jsonInputs[field] || 'null');
+                        jsonInputs[field] = JSON.stringify(val, null, 2);
+                    } catch (e) {
+                        // ignore
+                    }
+                };
+
+                const exportJson = () => {
+                    const data = buildExportData();
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+                    const downloadAnchorNode = document.createElement('a');
+                    downloadAnchorNode.setAttribute("href", dataStr);
+                    downloadAnchorNode.setAttribute("download", (root.id || "tree") + ".json");
+                    document.body.appendChild(downloadAnchorNode);
+                    downloadAnchorNode.click();
+                    downloadAnchorNode.remove();
+                };
+
+                const saveTree = async () => {
+                    if (!confirm("Deseja salvar as alterações no servidor?")) return;
+                    
+                    const data = buildExportData();
+                    try {
+                        const res = await fetch('/api/layers/tree/save/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        });
+                        
+                        if (res.ok) {
+                            alert("Árvore salva com sucesso!");
+                        } else {
+                            const err = await res.json();
+                            alert("Erro ao salvar: " + (err.error || "Erro desconhecido"));
+                        }
+                    } catch (e) {
+                        console.error("Erro ao salvar", e);
+                        alert("Erro de conexão ao salvar.");
+                    }
+                };
+
+                const buildExportData = () => {
+                    // Clean up internal fields (tempId)
+                    const cleanLayer = (l) => {
+                        const { tempId, ...rest } = l;
+                        return rest;
+                    };
+
+                    return [{
+                        id: root.id || 'root',
+                        title: root.title || 'Root',
+                        service_type: root.service_type,
+                        workspace: root.workspace,
+                        visible: root.visible,
+                        order: root.order,
+                        layers: root.layers.map(cleanLayer),
+                        thematic_groups: root.thematic_groups.map(g => ({
+                            id: g.id || g.title.toLowerCase().replace(/\s+/g, '-'),
+                            title: g.title,
+                            visible: g.visible,
+                            order: g.order,
+                            layers: g.layers.map(cleanLayer)
+                        }))
+                    }];
+                };
+
+                return {
+                    workspaces,
+                    availableLayers,
+                    root,
+                    selectedLayer,
+                    layerAttributes,
+                    popupTitleTemplate,
+                    styleConfig,
+                    jsonInputs,
+                    loadLayers,
+                    onLayerNameChange,
+                    updateFieldsJson,
+                    updateStyleJson,
+                    addRootLayer,
+                    addThematicGroup,
+                    addLayerToGroup,
+                    removeLayer,
+                    removeGroup,
+                    selectLayer,
+                    updateJson,
+                    formatJson,
+                    exportJson,
+                    saveTree,
+                    loadPreview,
+                    previewLoaded,
+                    toggleAll,
+                    insertFieldToTitle,
+                    previewTitle,
+                    previewFields
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
