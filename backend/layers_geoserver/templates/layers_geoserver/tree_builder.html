@@ -350,7 +350,18 @@
                                         <div class="grid grid-cols-3 gap-3">
                                             <div class="col-span-2">
                                                 <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Font</label>
-                                                <input type="text" v-model="styleConfig.label.font" @input="updateStyleJson" placeholder="10px Noto Sans Regular" class="w-full border rounded p-2 text-sm">
+                                                <div class="flex gap-2">
+                                                    <input type="number" v-model.number="styleConfig.label.fontSize" @input="updateStyleJson" class="w-20 border rounded p-2 text-sm" placeholder="Size">
+                                                    <select v-model="styleConfig.label.fontFamily" @change="updateStyleJson" class="flex-1 border rounded p-2 text-sm">
+                                                        <option value="Noto Sans Regular">Noto Sans Regular</option>
+                                                        <option value="Arial">Arial</option>
+                                                        <option value="Verdana">Verdana</option>
+                                                        <option value="Roboto">Roboto</option>
+                                                        <option value="Open Sans">Open Sans</option>
+                                                        <option value="Segoe UI">Segoe UI</option>
+                                                        <option value="Times New Roman">Times New Roman</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Color</label>
@@ -455,6 +466,8 @@
                         enabled: false,
                         field: '',
                         font: '10px Noto Sans Regular',
+                        fontSize: 10,
+                        fontFamily: 'Noto Sans Regular',
                         color: '#282828',
                         offsetY: -10,
                         haloColor: '#ffffff',
@@ -684,6 +697,9 @@
                     }
 
                     if (styleConfig.label.enabled) {
+                        // Update font string from components
+                        styleConfig.label.font = `${styleConfig.label.fontSize}px ${styleConfig.label.fontFamily}`;
+
                         config.label = {
                             font: styleConfig.label.font,
                             color: styleConfig.label.color,
@@ -955,6 +971,17 @@
                             styleConfig.label.enabled = true;
                             styleConfig.label.field = layer.style_config.label.field || '';
                             styleConfig.label.font = layer.style_config.label.font || '10px Noto Sans Regular';
+                            
+                            // Parse font string
+                            const fontParts = styleConfig.label.font.match(/^(\d+)px\s+(.+)$/);
+                            if (fontParts) {
+                                styleConfig.label.fontSize = parseInt(fontParts[1]);
+                                styleConfig.label.fontFamily = fontParts[2];
+                            } else {
+                                styleConfig.label.fontSize = 10;
+                                styleConfig.label.fontFamily = 'Noto Sans Regular';
+                            }
+
                             styleConfig.label.color = layer.style_config.label.color || '#282828';
                             styleConfig.label.offsetY = layer.style_config.label.offsetY || -10;
                             styleConfig.label.haloColor = layer.style_config.label.haloColor || '#ffffff';

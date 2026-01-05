@@ -3,22 +3,35 @@ import { createRoot, type Root } from "react-dom/client"
 
 import Map from "ol/Map"
 import View from "ol/View"
-import { defaults as defaultControls } from "ol/control"
+import { defaults as defaultControls, ScaleLine } from "ol/control"
 import { fromLonLat } from "ol/proj"
 import Overlay from "ol/Overlay"
 
 import type { RootGroupDto } from "../features/layers/types"
 import { buildLayersFromTree, type GeoServerLayerAvailability, type LayerVisibilityState } from "./olLayerFactory"
+import { createFeatureStyle } from "./olStyles"
 import { buildPopupModel } from "./popupTemplate"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card"
+import { BASEMAPS, type BasemapId } from "../features/map/basemaps"
+import { DrawTools } from "../features/map/DrawTools"
+import { MeasureTools } from "../features/map/MeasureTools"
+import LayerGroup from "ol/layer/Group"
 
 type Props = {
   tree: RootGroupDto[]
   visibility: LayerVisibilityState
   geoserverBaseUrl: string
   availability?: GeoServerLayerAvailability
+  activeBasemap?: BasemapId
+  searchLocation?: { x: number; y: number } | null
   onMapReady?: (map: Map | null) => void
 }
+
+const PIN_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-12 h-12 text-red-600 drop-shadow-xl">
+  <path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+</svg>
+`
 
 function PopupContent({ model }: { model: ReturnType<typeof buildPopupModel> }) {
   if (!model) return null
@@ -45,9 +58,14 @@ function PopupContent({ model }: { model: ReturnType<typeof buildPopupModel> }) 
 export function MapView(props: Props) {
   const targetRef = useRef<HTMLDivElement | null>(null)
   const [mapInstance, setMapInstance] = useState<Map | null>(null)
+  const [zoomLevel, setZoomLevel] = useState<number>(12)
+  const [activeTool, setActiveTool] = useState<"draw" | "measure" | null>(null)
   const popupOverlayRef = useRef<Overlay | null>(null)
   const popupElementRef = useRef<HTMLDivElement | null>(null)
   const popupRootRef = useRef<Root | null>(null)
+
+  const searchMarkerOverlayRef = useRef<Overlay | null>(null)
+  const searchMarkerElRef = useRef<HTMLDivElement | null>(null)
 
   const layersBundle = useMemo(
     // Important: don't rebuild OL layers on availability updates, or we drop loaded vector features.
@@ -73,12 +91,33 @@ export function MapView(props: Props) {
   }, [props.tree])
 
   useEffect(() => {
+    if (!layersBundle.basemap) return
+    if (!props.activeBasemap) return
+
+    const def = BASEMAPS.find((b) => b.id === props.activeBasemap)
+    if (def) {
+      // basemap is now a LayerGroup
+      const group = layersBundle.basemap as LayerGroup
+      group.getLayers().clear()
+      const newLayers = def.createLayers()
+      newLayers.forEach((l) => group.getLayers().push(l))
+
+      if (mapInstance) {
+        const view = mapInstance.getView()
+        view.setMaxZoom(def.maxZoom ?? 28)
+      }
+    }
+  }, [layersBundle, props.activeBasemap, mapInstance])
+
+  useEffect(() => {
     if (!targetRef.current || mapInstance) return
 
     const map = new Map({
       target: targetRef.current,
       layers: [layersBundle.basemap, layersBundle.overlays],
-      controls: defaultControls({ zoom: true, rotate: false, attribution: true }),
+      controls: defaultControls({ zoom: false, rotate: false, attribution: true }).extend([
+        new ScaleLine({ units: "metric" }),
+      ]),
       view: new View({
         center: fromLonLat([-51.2177, -30.0346]),
         zoom: 12,
@@ -87,6 +126,14 @@ export function MapView(props: Props) {
 
     setMapInstance(map)
     props.onMapReady?.(map)
+
+    // Update zoom level state
+    const updateZoom = () => {
+      const z = map.getView().getZoom()
+      if (z !== undefined) setZoomLevel(z)
+    }
+    map.on("moveend", updateZoom)
+    updateZoom()
 
     const popupEl = document.createElement("div")
     popupEl.className = "pointer-events-auto"
@@ -101,6 +148,20 @@ export function MapView(props: Props) {
     })
     popupOverlayRef.current = overlay
     map.addOverlay(overlay)
+
+    // Search Marker Overlay
+    const markerEl = document.createElement("div")
+    markerEl.className = "pointer-events-none"
+    searchMarkerElRef.current = markerEl
+
+    const markerOverlay = new Overlay({
+      element: markerEl,
+      positioning: "bottom-center",
+      offset: [0, -6], // Tip of the pin
+      stopEvent: false,
+    })
+    searchMarkerOverlayRef.current = markerOverlay
+    map.addOverlay(markerOverlay)
 
     return () => {
       if (popupRootRef.current) {
@@ -144,6 +205,39 @@ export function MapView(props: Props) {
       if (raf != null) cancelAnimationFrame(raf)
     }
   }, [mapInstance])
+
+  useEffect(() => {
+    if (!searchMarkerOverlayRef.current || !searchMarkerElRef.current) return
+
+    if (props.searchLocation) {
+      const coords = fromLonLat([props.searchLocation.x, props.searchLocation.y])
+      searchMarkerOverlayRef.current.setPosition(coords)
+
+      // Render pin
+      searchMarkerElRef.current.innerHTML = `
+        <div class="relative -top-2">
+          <div id="search-pin-icon" class="transition-transform duration-300">
+            ${PIN_SVG}
+          </div>
+        </div>
+      `
+
+      // Animate
+      const pin = searchMarkerElRef.current.querySelector("#search-pin-icon")
+      if (pin) {
+        pin.classList.add("animate-bounce")
+        // Stop bouncing after 10 seconds and hide
+        const timer = setTimeout(() => {
+          if (searchMarkerOverlayRef.current) searchMarkerOverlayRef.current.setPosition(undefined)
+          if (searchMarkerElRef.current) searchMarkerElRef.current.innerHTML = ""
+        }, 10000)
+        return () => clearTimeout(timer)
+      }
+    } else {
+      searchMarkerOverlayRef.current.setPosition(undefined)
+      searchMarkerElRef.current.innerHTML = ""
+    }
+  }, [props.searchLocation])
 
   useEffect(() => {
     const map = mapInstance
@@ -197,11 +291,23 @@ export function MapView(props: Props) {
     const map = mapInstance
     if (!map) return
 
+    const layers = map.getLayers()
+    const layersArray = layers.getArray()
+
+    // Update Basemap
+    const basemapIdx = layersArray.findIndex((l) => (l as any)?.get?.("id") === "basemap")
+    if (basemapIdx >= 0) {
+      if (layersArray[basemapIdx] !== layersBundle.basemap) {
+        layers.setAt(basemapIdx, layersBundle.basemap)
+      }
+    } else {
+      layers.insertAt(0, layersBundle.basemap)
+    }
+
     // Replace overlays group when tree/visibility changes
-    const layers = map.getLayers().getArray()
-    const idx = layers.findIndex((l) => (l as any)?.get?.("id") === "overlays")
+    const idx = layersArray.findIndex((l) => (l as any)?.get?.("id") === "overlays")
     if (idx >= 0) {
-      map.getLayers().setAt(idx, layersBundle.overlays)
+      layers.setAt(idx, layersBundle.overlays)
     } else {
       map.addLayer(layersBundle.overlays)
     }
@@ -227,6 +333,7 @@ export function MapView(props: Props) {
       props.visibility.groupVisibleById[groupId] ?? groupDefaults[groupId] ?? true
     const layerDesiredVisible = (layerId: string) =>
       props.visibility.layerVisibleById[layerId] ?? layerDefaults[layerId] ?? true
+    const labelVisible = (layerId: string) => props.visibility.labelVisibleById[layerId] ?? true
 
     const isLayerAvailable = (olLayer: any) => {
       if (!props.availability) return true
@@ -265,6 +372,25 @@ export function MapView(props: Props) {
           const dv = layerDesiredVisible(id)
           const av = isLayerAvailable(olLayer)
           olLayer.setVisible(currentRootVisible && currentGroupVisible && dv && av)
+
+          // Update label visibility for WFS layers
+          const serviceType = olLayer.get("serviceType")
+          if (serviceType === "WFS") {
+            const styleConfig = olLayer.get("styleConfig")
+            if (styleConfig) {
+              const showLabels = labelVisible(id)
+              // We need to check if the style function needs updating.
+              // Since createFeatureStyle returns a new function every time, we can just set it.
+              // However, setting style triggers a redraw, so we should be careful.
+              // But this effect runs when visibility changes, so it's fine.
+              // To avoid unnecessary updates, we could store the current label state on the layer.
+              const currentLabelState = olLayer.get("_labelVisible")
+              if (currentLabelState !== showLabels) {
+                olLayer.setStyle(createFeatureStyle(styleConfig, showLabels))
+                olLayer.set("_labelVisible", showLabels)
+              }
+            }
+          }
         }
       }
     }
@@ -272,5 +398,24 @@ export function MapView(props: Props) {
     applyToLayerCollection(overlays.getLayers(), true, true)
   }, [props.visibility, defaultsById, layersBundle, props.availability])
 
-  return <div ref={targetRef} className="h-full w-full" />
+  return (
+    <div className="relative h-full w-full">
+      <div ref={targetRef} className="h-full w-full" />
+      <div className="absolute bottom-8 left-2 z-10 rounded bg-white/80 px-2 py-1 text-xs font-medium text-zinc-700 shadow-sm pointer-events-none">
+        Zoom: {zoomLevel.toFixed(1)}
+      </div>
+      <div className="absolute top-4 left-4 z-20 flex flex-row gap-2 items-start">
+        <DrawTools 
+          map={mapInstance} 
+          isOpen={activeTool === "draw"} 
+          onToggle={() => setActiveTool(prev => prev === "draw" ? null : "draw")} 
+        />
+        <MeasureTools 
+          map={mapInstance} 
+          isOpen={activeTool === "measure"} 
+          onToggle={() => setActiveTool(prev => prev === "measure" ? null : "measure")} 
+        />
+      </div>
+    </div>
+  )
 }

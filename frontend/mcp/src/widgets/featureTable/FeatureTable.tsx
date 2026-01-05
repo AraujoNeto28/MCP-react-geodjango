@@ -142,12 +142,16 @@ export function FeatureTable(props: Props) {
   const [selectedByKey, setSelectedByKey] = useState<Record<string, boolean>>({})
   const [hoveredKey, setHoveredKey] = useState<string | null>(null)
 
+  const [page, setPage] = useState(1)
+  const pageSize = 50
+
   const layerTitle = props.layer?.title ?? ""
 
   useEffect(() => {
     if (!props.open) return
     setSelectedByKey({})
     setHoveredKey(null)
+    setPage(1)
   }, [props.open, props.layer?.id])
 
   useEffect(() => {
@@ -245,6 +249,8 @@ export function FeatureTable(props: Props) {
   if (!props.open) return null
 
   const recordCount = features.length
+  const totalPages = Math.ceil(recordCount / pageSize)
+  const visibleFeatures = features.slice((page - 1) * pageSize, page * pageSize)
 
   const getFeatureKey = (feature: any, fallbackIndex: number) => {
     const id = feature?.getId?.()
@@ -588,6 +594,7 @@ export function FeatureTable(props: Props) {
       </div>
 
       {!props.minimized && (
+        <>
         <div className="min-h-0 flex-1 w-full overflow-auto">
           {props.layer?.serviceType !== "WFS" && (
             <div className="p-4 text-sm text-zinc-600">A tabela de atributos está disponível apenas para camadas WFS.</div>
@@ -616,19 +623,20 @@ export function FeatureTable(props: Props) {
                 </tr>
               </thead>
               <tbody>
-                {features.map((f, idx) => {
+                {visibleFeatures.map((f, idx) => {
+                  const globalIdx = (page - 1) * pageSize + idx
                   const rowProps = f?.getProperties?.() ?? {}
-                  const fKey = getFeatureKey(f, idx)
+                  const fKey = getFeatureKey(f, globalIdx)
                   const checked = !!selectedByKey[fKey]
                   const isHovered = hoveredKey === fKey
 
                   return (
                     <tr
-                      key={idx}
+                      key={globalIdx}
                       className={
                         isHovered
                           ? "bg-blue-50"
-                          : idx % 2 === 0
+                          : globalIdx % 2 === 0
                             ? "bg-white"
                             : "bg-zinc-50/40"
                       }
@@ -646,7 +654,7 @@ export function FeatureTable(props: Props) {
                           }
                         />
                       </td>
-                      <td className="border-b border-zinc-100 px-2 py-2 text-zinc-600">{idx + 1}</td>
+                      <td className="border-b border-zinc-100 px-2 py-2 text-zinc-600">{globalIdx + 1}</td>
                       <td className="border-b border-zinc-100 px-2 py-2">
                         <Button
                           variant="ghost"
@@ -674,6 +682,34 @@ export function FeatureTable(props: Props) {
             </>
           )}
         </div>
+        <div className="flex items-center justify-between border-t border-zinc-200 bg-zinc-50 px-4 py-2 shrink-0">
+            <div className="text-xs text-zinc-500">
+                Página {page} de {totalPages || 1}
+            </div>
+            <div className="flex items-center gap-2">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                        <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                    </svg>
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                        <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                    </svg>
+                </Button>
+            </div>
+        </div>
+        </>
       )}
 
       {/* small hint icon for minimized mode */}

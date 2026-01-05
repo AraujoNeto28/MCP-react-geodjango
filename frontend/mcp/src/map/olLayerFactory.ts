@@ -25,6 +25,7 @@ export type LayerVisibilityState = {
   rootVisibleById: Record<string, boolean>
   groupVisibleById: Record<string, boolean>
   layerVisibleById: Record<string, boolean>
+  labelVisibleById: Record<string, boolean>
 }
 
 function getCqlFilter(layer: LayerDto): string | undefined {
@@ -261,6 +262,7 @@ function createWfsLayer(geoserverBaseUrl: string, layer: LayerDto) {
       desiredVisible: layer.visible,
       popupTemplate: layer.popupTemplate,
       title: layer.title,
+      styleConfig: layer.styleConfig, // Save style config for dynamic updates
     },
   })
 }
@@ -342,8 +344,8 @@ export function buildLayersFromTree(
     })
   })
 
-  const basemap = new TileLayer({
-    source: new OSM(),
+  const basemap = new LayerGroup({
+    layers: [new TileLayer({ source: new OSM() })],
     zIndex: -1,
     properties: { id: "basemap", kind: "basemap" },
   })

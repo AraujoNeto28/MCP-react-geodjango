@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from "react"
+import { fromLonLat } from "ol/proj"
 
 import { env } from "../config/env"
 import { fetchGeoServerWorkspaceLayers } from "../features/geoserver/api"
 import { LayerTree } from "../features/layers/LayerTree"
 import { useLayersTree } from "../features/layers/useLayersTree"
 import type { RootGroupDto, ServiceType, ThematicGroupDto } from "../features/layers/types"
+import { LegendsPanel } from "../features/layers/LegendsPanel"
 import { SearchPanel } from "../features/search/SearchPanel"
+import { SearchAddressPanel } from "../features/search/SearchAddressPanel"
+import { CoordinateLocatorPanel } from "../features/search/CoordinateLocatorPanel"
+import { BasemapsPanel } from "../features/map/BasemapsPanel"
+import type { BasemapId } from "../features/map/basemaps"
 import { MapView } from "../map/MapView"
 import type { GeoServerLayerAvailability, LayerVisibilityState } from "../map/olLayerFactory"
 import { FeatureTable } from "../widgets/featureTable/FeatureTable"
@@ -19,17 +25,24 @@ function buildInitialVisibility(tree: RootGroupDto[]): LayerVisibilityState {
   const rootVisibleById: Record<string, boolean> = {}
   const groupVisibleById: Record<string, boolean> = {}
   const layerVisibleById: Record<string, boolean> = {}
+  const labelVisibleById: Record<string, boolean> = {}
 
   for (const root of tree) {
     rootVisibleById[root.id] = root.visible
-    for (const l of root.layers) layerVisibleById[l.id] = l.visible
+    for (const l of root.layers) {
+      layerVisibleById[l.id] = l.visible
+      labelVisibleById[l.id] = true
+    }
     for (const g of root.thematicGroups) {
       groupVisibleById[g.id] = g.visible
-      for (const l of g.layers) layerVisibleById[l.id] = l.visible
+      for (const l of g.layers) {
+        layerVisibleById[l.id] = l.visible
+        labelVisibleById[l.id] = true
+      }
     }
   }
 
-  return { rootVisibleById, groupVisibleById, layerVisibleById }
+  return { rootVisibleById, groupVisibleById, layerVisibleById, labelVisibleById }
 }
 
 export function AppShell() {
@@ -39,11 +52,14 @@ export function AppShell() {
     rootVisibleById: {},
     groupVisibleById: {},
     layerVisibleById: {},
+    labelVisibleById: {},
   }))
 
   const tree = useMemo(() => data ?? [], [data])
 
   const [availability, setAvailability] = useState<GeoServerLayerAvailability>({})
+  const [searchLocation, setSearchLocation] = useState<{ x: number; y: number } | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   // Initialize visibility when tree loads
   useEffect(() => {
@@ -141,7 +157,16 @@ export function AppShell() {
     }))
   }
 
-  const [sidebarView, setSidebarView] = useState<"actions" | "layers" | "search">("actions")
+  const onToggleLabel = (layerId: string, visible: boolean) => {
+    setVisibility((s) => ({
+      ...s,
+      labelVisibleById: { ...s.labelVisibleById, [layerId]: visible },
+    }))
+  }
+
+  const [activeBasemap, setActiveBasemap] = useState<BasemapId>("carto-positron")
+
+  const [sidebarView, setSidebarView] = useState<"actions" | "layers" | "search" | "basemaps" | "searchAddress" | "legends" | "coordinateLocator">("actions")
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
@@ -214,8 +239,9 @@ export function AppShell() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-80 shrink-0 bg-white transition-transform duration-300 ease-in-out md:static md:z-auto md:translate-x-0 md:flex md:h-full md:flex-col shadow-xl md:shadow-none border-r border-zinc-200",
-          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-40 w-80 shrink-0 bg-white transition-all duration-300 ease-in-out md:static md:z-auto md:translate-x-0 md:flex md:h-full md:flex-col shadow-xl md:shadow-none border-r border-zinc-200",
+          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full",
+          !sidebarOpen && "md:w-0 md:border-none overflow-hidden"
         )}
       >
         <div className="flex h-16 items-center justify-between border-b border-blue-800 px-6 shrink-0 bg-blue-700 text-white">
@@ -226,7 +252,9 @@ export function AppShell() {
                 ? "Menu Principal"
                 : sidebarView === "layers"
                   ? "Camadas"
-                  : "Buscar"}
+                  : sidebarView === "search"
+                    ? "Buscar"
+                    : "Mapas Base"}
             </div>
           </div>
           {sidebarView !== "actions" && (
@@ -254,6 +282,40 @@ export function AppShell() {
         <div className="flex-1 overflow-auto bg-zinc-50/50">
           {sidebarView === "actions" && (
             <div className="p-4 space-y-3">
+              <button
+                onClick={() => setSidebarView("layers")}
+                className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="h-5 w-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-zinc-900">Camadas</div>
+                    <div className="text-xs text-zinc-500">Gerenciar visibilidade</div>
+                  </div>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="h-5 w-5 text-zinc-300 group-hover:text-zinc-500 transition-colors"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+
               <button
                 onClick={() => setSidebarView("search")}
                 className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
@@ -289,11 +351,11 @@ export function AppShell() {
               </button>
 
               <button
-                onClick={() => setSidebarView("layers")}
+                onClick={() => setSidebarView("legends")}
                 className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600 group-hover:bg-purple-100 transition-colors">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -302,12 +364,116 @@ export function AppShell() {
                       stroke="currentColor"
                       className="h-5 w-5"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                     </svg>
                   </div>
                   <div>
-                    <div className="font-semibold text-zinc-900">Camadas</div>
-                    <div className="text-xs text-zinc-500">Gerenciar visibilidade</div>
+                    <div className="font-semibold text-zinc-900">Legendas</div>
+                    <div className="text-xs text-zinc-500">Visualizar legendas das camadas</div>
+                  </div>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="h-5 w-5 text-zinc-300 group-hover:text-zinc-500 transition-colors"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+
+              <button
+                onClick={() => setSidebarView("searchAddress")}
+                className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-600 group-hover:bg-orange-100 transition-colors">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="h-5 w-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-zinc-900">Buscar Endereços</div>
+                    <div className="text-xs text-zinc-500">Localizar endereços e lugares</div>
+                  </div>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="h-5 w-5 text-zinc-300 group-hover:text-zinc-500 transition-colors"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+
+              <button
+                onClick={() => setSidebarView("coordinateLocator")}
+                className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 text-cyan-600 group-hover:bg-cyan-100 transition-colors">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="h-5 w-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-zinc-900">Localizar Coordenada</div>
+                    <div className="text-xs text-zinc-500">Ir para coordenada (WGS84 / TM-POA)</div>
+                  </div>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="h-5 w-5 text-zinc-300 group-hover:text-zinc-500 transition-colors"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+
+              <button
+                onClick={() => setSidebarView("basemaps")}
+                className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                      className="h-5 w-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-zinc-900">Mapas Base</div>
+                    <div className="text-xs text-zinc-500">Alterar mapa de fundo</div>
                   </div>
                 </div>
                 <svg
@@ -322,6 +488,10 @@ export function AppShell() {
                 </svg>
               </button>
             </div>
+          )}
+
+          {sidebarView === "basemaps" && (
+            <BasemapsPanel activeBasemap={activeBasemap} onBasemapChange={setActiveBasemap} />
           )}
 
           {sidebarView === "layers" && (
@@ -364,6 +534,18 @@ export function AppShell() {
             </>
           )}
 
+          {sidebarView === "legends" && (
+            <LegendsPanel
+              tree={tree}
+              visibility={visibility}
+              geoserverBaseUrl={env.geoserverBaseUrl}
+              onToggleLayer={onToggleLayer}
+              onToggleLabel={onToggleLabel}
+              onToggleRoot={onToggleRoot}
+              onToggleGroup={onToggleGroup}
+            />
+          )}
+
           {sidebarView === "search" && (
             <SearchPanel
               apiBaseUrl={env.apiBaseUrl}
@@ -381,16 +563,69 @@ export function AppShell() {
               }}
             />
           )}
+
+          {sidebarView === "searchAddress" && (
+            <SearchAddressPanel
+              onLocationSelect={(candidate) => {
+                setSearchLocation(candidate.location)
+                if (map) {
+                  map.getView().animate({
+                    center: fromLonLat([candidate.location.x, candidate.location.y]),
+                    zoom: 17,
+                    duration: 1000,
+                  })
+                }
+                setMobileSidebarOpen(false)
+              }}
+            />
+          )}
+
+          {sidebarView === "coordinateLocator" && (
+            <CoordinateLocatorPanel
+              onLocationSelect={(location) => {
+                setSearchLocation(location)
+                if (map) {
+                  map.getView().animate({
+                    center: fromLonLat([location.x, location.y]),
+                    zoom: 17,
+                    duration: 1000,
+                  })
+                }
+                setMobileSidebarOpen(false)
+              }}
+            />
+          )}
         </div>
       </aside>
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col pt-12 md:pt-0">
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col pt-12 md:pt-0">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className={cn(
+            "absolute top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border border-zinc-200 bg-white p-1.5 shadow-md hover:bg-zinc-50 md:flex text-zinc-600 transition-all duration-300",
+            sidebarOpen ? "left-0 -translate-x-1/2" : "left-4 -translate-x-1/2"
+          )}
+          title={sidebarOpen ? "Esconder menu" : "Mostrar menu"}
+        >
+          {sidebarOpen ? (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+            </svg>
+          )}
+        </button>
+
         <div className="min-h-0 flex-1">
           <MapView
             tree={tree}
             visibility={visibility}
             geoserverBaseUrl={env.geoserverBaseUrl}
             availability={availability}
+            activeBasemap={activeBasemap}
+            searchLocation={searchLocation}
             onMapReady={setMap}
           />
         </div>

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django.contrib.gis',  # GeoDjango
     'layers_geoserver',
+    'address_search',
 ]
 
 MIDDLEWARE = [

@@ -50,7 +50,7 @@ export function createOlStyle(styleConfig: unknown): Style | undefined {
   })
 }
 
-export function createFeatureStyle(styleConfig: unknown) {
+export function createFeatureStyle(styleConfig: unknown, showLabels = true) {
   const base = createOlStyle(styleConfig)
   if (!base) return undefined
 
@@ -60,8 +60,12 @@ export function createFeatureStyle(styleConfig: unknown) {
     const labelField = labelCfg ? asString(labelCfg.field) : undefined
 
     if (labelField && base.getText()) {
-      const val = feature?.get?.(labelField)
-      base.getText()!.setText(val == null ? "" : String(val))
+      if (!showLabels) {
+        base.getText()!.setText("")
+      } else {
+        const val = feature?.get?.(labelField)
+        base.getText()!.setText(val == null ? "" : String(val))
+      }
     }
 
     return base
