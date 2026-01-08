@@ -16,7 +16,7 @@ export const BASEMAPS: BasemapDef[] = [
   {
     id: "osm",
     label: "OpenStreetMap",
-    createLayers: () => [new TileLayer({ source: new OSM() })],
+    createLayers: () => [new TileLayer({ source: new OSM({ crossOrigin: "anonymous" }) })],
   },
   {
     id: "carto-positron",
@@ -25,6 +25,7 @@ export const BASEMAPS: BasemapDef[] = [
       new TileLayer({
         source: new XYZ({
           url: "https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+          crossOrigin: "anonymous",
           attributions:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         }),
@@ -38,6 +39,7 @@ export const BASEMAPS: BasemapDef[] = [
       new TileLayer({
         source: new XYZ({
           url: "https://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+          crossOrigin: "anonymous",
           attributions:
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         }),
@@ -52,6 +54,7 @@ export const BASEMAPS: BasemapDef[] = [
       new TileLayer({
         source: new XYZ({
           url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          crossOrigin: "anonymous",
           maxZoom: 19,
           attributions:
             "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
@@ -67,6 +70,7 @@ export const BASEMAPS: BasemapDef[] = [
       new TileLayer({
         source: new XYZ({
           url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          crossOrigin: "anonymous",
           maxZoom: 19,
           attributions: "Tiles &copy; Esri",
         }),
@@ -74,6 +78,7 @@ export const BASEMAPS: BasemapDef[] = [
       new TileLayer({
         source: new XYZ({
           url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+          crossOrigin: "anonymous",
           maxZoom: 19,
           attributions: "Tiles &copy; Esri",
         }),
@@ -81,6 +86,7 @@ export const BASEMAPS: BasemapDef[] = [
       new TileLayer({
         source: new XYZ({
           url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+          crossOrigin: "anonymous",
           maxZoom: 19,
           attributions: "Tiles &copy; Esri",
         }),

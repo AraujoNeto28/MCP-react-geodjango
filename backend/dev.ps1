@@ -12,7 +12,7 @@ docker build -t geodjango-backend .
 # Se o build der certo, roda o container
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Iniciando servidor..."
-    docker run -p 3000:3000 --env-file .env geodjango-backend
+    docker run -p 3001:3001 --env-file .env geodjango-backend
 } else {
     Write-Host "Erro no build. O container não será iniciado."
 }

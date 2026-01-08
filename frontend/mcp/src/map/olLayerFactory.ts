@@ -345,7 +345,7 @@ export function buildLayersFromTree(
   })
 
   const basemap = new LayerGroup({
-    layers: [new TileLayer({ source: new OSM() })],
+    layers: [new TileLayer({ source: new OSM({ crossOrigin: "anonymous" }) })],
     zIndex: -1,
     properties: { id: "basemap", kind: "basemap" },
   })

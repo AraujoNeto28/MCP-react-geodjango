@@ -3,18 +3,25 @@ import { createRoot, type Root } from "react-dom/client"
 
 import Map from "ol/Map"
 import View from "ol/View"
-import { defaults as defaultControls, ScaleLine } from "ol/control"
+import { defaults as defaultControls, Attribution, ScaleLine } from "ol/control"
 import { fromLonLat } from "ol/proj"
 import Overlay from "ol/Overlay"
+import Draw, { createBox } from "ol/interaction/Draw"
+import Modify from "ol/interaction/Modify"
+import { never } from "ol/events/condition"
+import VectorSource from "ol/source/Vector"
+import VectorLayer from "ol/layer/Vector"
+import { fromExtent as polygonFromExtent } from "ol/geom/Polygon"
+import { Fill, Stroke, Style, Circle as CircleStyle } from "ol/style"
 
 import type { RootGroupDto } from "../features/layers/types"
 import { buildLayersFromTree, type GeoServerLayerAvailability, type LayerVisibilityState } from "./olLayerFactory"
 import { createFeatureStyle } from "./olStyles"
-import { buildPopupModel } from "./popupTemplate"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card"
+import { buildPopupModel } from "../widgets/popup/popupTemplate"
+import { Popup } from "../widgets/popup/Popup"
 import { BASEMAPS, type BasemapId } from "../features/map/basemaps"
-import { DrawTools } from "../features/map/DrawTools"
-import { MeasureTools } from "../features/map/MeasureTools"
+import { DrawTools } from "../widgets/drawTools/DrawTools"
+import { MeasureTools } from "../widgets/measureTools/MeasureTools"
 import LayerGroup from "ol/layer/Group"
 
 type Props = {
@@ -25,6 +32,9 @@ type Props = {
   activeBasemap?: BasemapId
   searchLocation?: { x: number; y: number } | null
   onMapReady?: (map: Map | null) => void
+  printMode?: boolean
+  onPrintSelectionExtentChange?: (extent: [number, number, number, number] | null) => void
+  onPrintSelectionPointsChange?: (points: { start: [number, number]; end: [number, number] } | null) => void
 }
 
 const PIN_SVG = `
@@ -32,28 +42,6 @@ const PIN_SVG = `
   <path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
 </svg>
 `
-
-function PopupContent({ model }: { model: ReturnType<typeof buildPopupModel> }) {
-  if (!model) return null
-  return (
-    <Card className="w-[320px] max-w-[80vw] shadow-md border-zinc-200">
-      <CardHeader className="p-3 pb-2">
-        <CardTitle className="text-sm font-semibold leading-tight">{model.title}</CardTitle>
-      </CardHeader>
-      <CardContent className="p-3 pt-0 space-y-1">
-        {model.rows.map((row, i) => (
-          <div key={i} className="flex gap-2">
-            <div className="w-24 shrink-0 text-xs font-medium text-zinc-500">{row.label}</div>
-            <div className="min-w-0 flex-1 break-words text-sm text-zinc-900">{row.value}</div>
-          </div>
-        ))}
-        {model.rows.length === 0 && (
-          <div className="text-sm text-zinc-500">Sem campos configurados no popupTemplate.</div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
 
 export function MapView(props: Props) {
   const targetRef = useRef<HTMLDivElement | null>(null)
@@ -63,6 +51,18 @@ export function MapView(props: Props) {
   const popupOverlayRef = useRef<Overlay | null>(null)
   const popupElementRef = useRef<HTMLDivElement | null>(null)
   const popupRootRef = useRef<Root | null>(null)
+
+  const popupSelectionLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
+  const popupSelectionSourceRef = useRef<VectorSource<any> | null>(null)
+
+  const popupHitsRef = useRef<Array<{ feature: any; layer: any }> | null>(null)
+  const popupHitIndexRef = useRef<number>(0)
+  const popupCoordinateRef = useRef<any>(null)
+
+  const printLayerRef = useRef<VectorLayer<VectorSource<any>> | null>(null)
+  const printSourceRef = useRef<VectorSource<any> | null>(null)
+  const printDrawRef = useRef<Draw | null>(null)
+  const printModifyRef = useRef<Modify | null>(null)
 
   const searchMarkerOverlayRef = useRef<Overlay | null>(null)
   const searchMarkerElRef = useRef<HTMLDivElement | null>(null)
@@ -115,7 +115,9 @@ export function MapView(props: Props) {
     const map = new Map({
       target: targetRef.current,
       layers: [layersBundle.basemap, layersBundle.overlays],
-      controls: defaultControls({ zoom: false, rotate: false, attribution: true }).extend([
+      controls: defaultControls({ zoom: false, rotate: false, attribution: false }).extend([
+        // Avoid the collapsible attribution toggle button ("i") on small screens.
+        new Attribution({ collapsible: false }),
         new ScaleLine({ units: "metric" }),
       ]),
       view: new View({
@@ -149,6 +151,37 @@ export function MapView(props: Props) {
     popupOverlayRef.current = overlay
     map.addOverlay(overlay)
 
+    // Popup selection highlight layer (so users know which feature the open popup belongs to)
+    const popupSelSource = new VectorSource()
+    // High-contrast highlight (white halo + blue stroke) so it shows above vivid basemaps.
+    const popupSelHalo = new Stroke({ color: "rgba(255, 255, 255, 0.95)", width: 8 })
+    const popupSelStroke = new Stroke({ color: "rgba(0, 132, 255, 1)", width: 4 })
+    const popupSelFill = new Fill({ color: "rgba(0, 132, 255, 0.20)" })
+
+    const popupSelPointStyle = [
+      new Style({ image: new CircleStyle({ radius: 11, fill: popupSelFill, stroke: popupSelHalo }), zIndex: 10_000 }),
+      new Style({ image: new CircleStyle({ radius: 11, fill: popupSelFill, stroke: popupSelStroke }), zIndex: 10_001 }),
+    ]
+
+    const popupSelGeomStyle = [
+      new Style({ stroke: popupSelHalo, zIndex: 10_000 }),
+      new Style({ stroke: popupSelStroke, fill: popupSelFill, zIndex: 10_001 }),
+    ]
+
+    const popupSelLayer = new VectorLayer({
+      source: popupSelSource,
+      style: (feature: any) => {
+        const geom = feature?.getGeometry?.()
+        const type = geom?.getType?.() as string | undefined
+        if (type === "Point" || type === "MultiPoint") return popupSelPointStyle
+        return popupSelGeomStyle
+      },
+    })
+    popupSelLayer.set("id", "popupSelection")
+    popupSelectionLayerRef.current = popupSelLayer
+    popupSelectionSourceRef.current = popupSelSource
+    map.addLayer(popupSelLayer)
+
     // Search Marker Overlay
     const markerEl = document.createElement("div")
     markerEl.className = "pointer-events-none"
@@ -171,6 +204,11 @@ export function MapView(props: Props) {
       if (popupOverlayRef.current) map.removeOverlay(popupOverlayRef.current)
       popupOverlayRef.current = null
       popupElementRef.current = null
+
+      if (popupSelectionLayerRef.current) map.removeLayer(popupSelectionLayerRef.current)
+      popupSelectionLayerRef.current = null
+      popupSelectionSourceRef.current = null
+
       map.setTarget(undefined)
       setMapInstance(null)
       props.onMapReady?.(null)
@@ -182,8 +220,6 @@ export function MapView(props: Props) {
     const el = targetRef.current
     if (!map || !el) return
 
-    // Keep OL internal size in sync with CSS/layout changes (e.g. attribute table height transitions).
-    // When OL has a stale size, view center logs look correct but the rendered center on screen is offset.
     if (typeof ResizeObserver === "undefined") {
       map.updateSize?.()
       return
@@ -243,42 +279,118 @@ export function MapView(props: Props) {
     const map = mapInstance
     const overlay = popupOverlayRef.current
     const popupEl = popupElementRef.current
+    const popupSelSource = popupSelectionSourceRef.current
     if (!map || !overlay || !popupEl) return
 
-    const renderPopup = (popupTemplate: unknown, feature: any) => {
-      const model = buildPopupModel(popupTemplate, feature?.getProperties?.() ?? {})
-      if (!model) return
+    const closePopup = () => {
+      overlay.setPosition(undefined)
+      popupSelSource?.clear(true)
+      popupHitsRef.current = null
+      popupHitIndexRef.current = 0
+      popupCoordinateRef.current = null
+    }
+
+    const setPopupSelection = (feature: any) => {
+      if (!popupSelSource) return
+      popupSelSource.clear(true)
+      try {
+        const clone = feature?.clone?.() ?? null
+        if (clone) popupSelSource.addFeature(clone)
+      } catch {
+        // ignore
+      }
+    }
+
+    const renderHitAtIndex = (index: number) => {
+      const hits = popupHitsRef.current
+      if (!hits || hits.length === 0) {
+        closePopup()
+        return
+      }
+
+      const safeIndex = Math.max(0, Math.min(index, hits.length - 1))
+      popupHitIndexRef.current = safeIndex
+
+      const hit = hits[safeIndex]
+      const template = hit.feature.get("_popupTemplate") ?? hit.layer?.get?.("popupTemplate")
+      const model = buildPopupModel(template, hit.feature?.getProperties?.() ?? {})
+      if (!model) {
+        closePopup()
+        return
+      }
 
       if (!popupRootRef.current) {
         popupRootRef.current = createRoot(popupEl)
       }
-      popupRootRef.current.render(<PopupContent model={model} />)
+
+      const canPrev = safeIndex > 0
+      const canNext = safeIndex < hits.length - 1
+      const onPrev = () => {
+        if (!canPrev) return
+        renderHitAtIndex(safeIndex - 1)
+      }
+      const onNext = () => {
+        if (!canNext) return
+        renderHitAtIndex(safeIndex + 1)
+      }
+
+      popupRootRef.current.render(
+        <Popup
+          model={model}
+          onClose={closePopup}
+          onPrev={onPrev}
+          onNext={onNext}
+          canPrev={canPrev}
+          canNext={canNext}
+          positionLabel={`${safeIndex + 1} / ${hits.length}`}
+        />,
+      )
+
+      // Keep popup at the original click coordinate while navigating
+      if (popupCoordinateRef.current) overlay.setPosition(popupCoordinateRef.current)
+
+      setPopupSelection(hit.feature)
     }
 
     const onClick = (evt: any) => {
-      const hit = map.forEachFeatureAtPixel(
+      const rawHits: Array<{ feature: any; layer: any }> = []
+      map.forEachFeatureAtPixel(
         evt.pixel,
-        (feature: any, layer: any) => ({ feature, layer }),
-        { hitTolerance: 5 },
-      ) as { feature: any; layer: any } | undefined
+        (feature: any, layer: any) => {
+          rawHits.push({ feature, layer })
+          return undefined
+        },
+        // Drill: capture features at/near the clicked pixel
+        { hitTolerance: 10 },
+      )
 
-      if (!hit?.feature) {
-        overlay.setPosition(undefined)
+      const unique = new Set<string>()
+      const hits = rawHits
+        .filter((h) => h?.feature)
+        .filter((h) => h.layer?.get?.("id") !== "popupSelection")
+        .filter((h) => {
+          const serviceType = h.feature.get("_serviceType") ?? h.layer?.get?.("serviceType")
+          return serviceType === "WFS"
+        })
+        .filter((h) => {
+          const id = String(h.feature?.getId?.() ?? h.feature?.ol_uid ?? "")
+          const key = id || String((h.feature as any)?.uid ?? "")
+          if (!key) return true
+          if (unique.has(key)) return false
+          unique.add(key)
+          return true
+        })
+
+      if (hits.length === 0) {
+        closePopup()
         return
       }
 
-      // Try to get metadata from feature first (more robust), then layer
-      const serviceType = hit.feature.get("_serviceType") ?? hit.layer?.get?.("serviceType")
-      
-      if (serviceType !== "WFS") {
-        overlay.setPosition(undefined)
-        return
-      }
-
-      const template = hit.feature.get("_popupTemplate") ?? hit.layer?.get?.("popupTemplate")
-      
-      renderPopup(template, hit.feature)
+      popupHitsRef.current = hits
+      popupHitIndexRef.current = 0
+      popupCoordinateRef.current = evt.coordinate
       overlay.setPosition(evt.coordinate)
+      renderHitAtIndex(0)
     }
 
     map.on("singleclick", onClick)
@@ -314,6 +426,217 @@ export function MapView(props: Props) {
 
     return
   }, [layersBundle, mapInstance])
+
+  useEffect(() => {
+    const map = mapInstance
+    if (!map) return
+
+    // Cleanup when leaving print mode
+    if (!props.printMode) {
+      if (printDrawRef.current) map.removeInteraction(printDrawRef.current)
+      if (printModifyRef.current) map.removeInteraction(printModifyRef.current)
+      printDrawRef.current = null
+      printModifyRef.current = null
+
+      if (printLayerRef.current) {
+        map.removeLayer(printLayerRef.current)
+      }
+      printLayerRef.current = null
+      printSourceRef.current = null
+      props.onPrintSelectionExtentChange?.(null)
+      props.onPrintSelectionPointsChange?.(null)
+      try {
+        map.getViewport().style.cursor = ""
+      } catch {
+        // ignore
+      }
+      return
+    }
+
+    // Setup print selection layer + interactions
+    const source = new VectorSource()
+    const layer = new VectorLayer({
+      source,
+      properties: { id: "printSelection" },
+      style: new Style({
+        stroke: new Stroke({ color: "#2563eb", width: 2, lineDash: [6, 4] }),
+        fill: new Fill({ color: "rgba(37, 99, 235, 0.08)" }),
+      }),
+    })
+
+    layer.setZIndex(10_000)
+    map.addLayer(layer)
+
+    // Keep the selection ALWAYS rectangular while editing.
+    // OL's Modify interaction lets you drag a corner inward, deforming the polygon.
+    // We snap the geometry back to a box from its extent on every change.
+    let isSnapping = false
+    const snapFeatureToExtent = (feature: any) => {
+      if (isSnapping) return
+      const geom = feature?.getGeometry?.()
+      const ext = geom?.getExtent?.() as [number, number, number, number] | undefined
+      if (!ext) return
+
+      isSnapping = true
+      try {
+        // Important: do NOT replace the geometry object while Modify is active.
+        // Replacing it detaches internal Modify listeners and can allow deformation.
+        const minX = ext[0]
+        const minY = ext[1]
+        const maxX = ext[2]
+        const maxY = ext[3]
+
+        const ring = [
+          [minX, minY],
+          [maxX, minY],
+          [maxX, maxY],
+          [minX, maxY],
+          [minX, minY],
+        ]
+
+        if (geom && typeof (geom as any).setCoordinates === "function" && (geom as any).getType?.() === "Polygon") {
+          ;(geom as any).setCoordinates([ring])
+        } else {
+          feature.setGeometry(polygonFromExtent(ext))
+        }
+        props.onPrintSelectionExtentChange?.(ext)
+        props.onPrintSelectionPointsChange?.({ start: [ext[0], ext[1]], end: [ext[2], ext[3]] })
+      } finally {
+        isSnapping = false
+      }
+    }
+
+    const detachGeomListener = (feature: any) => {
+      const geom = feature?.get?.("_printSelGeom")
+      const handler = feature?.get?.("_printSelGeomChange")
+      if (geom && handler && typeof geom.un === "function") {
+        try {
+          geom.un("change", handler)
+        } catch {
+          // ignore
+        }
+      }
+      try {
+        feature?.unset?.("_printSelGeom")
+        feature?.unset?.("_printSelGeomChange")
+      } catch {
+        // ignore
+      }
+    }
+
+    const attachGeomListener = (feature: any) => {
+      detachGeomListener(feature)
+      const geom = feature?.getGeometry?.()
+      if (!geom || typeof geom.on !== "function") return
+
+      const handler = () => snapFeatureToExtent(feature)
+      geom.on("change", handler)
+      feature.set("_printSelGeom", geom)
+      feature.set("_printSelGeomChange", handler)
+
+      // Ensure a clean rectangular geometry immediately.
+      snapFeatureToExtent(feature)
+    }
+
+    const onAddFeature = (evt: any) => {
+      if (evt?.feature) attachGeomListener(evt.feature)
+    }
+    const onRemoveFeature = (evt: any) => {
+      if (evt?.feature) detachGeomListener(evt.feature)
+    }
+
+    source.on("addfeature", onAddFeature)
+    source.on("removefeature", onRemoveFeature)
+
+    // No initial rectangle: user draws the selection (or prints full screen).
+    props.onPrintSelectionExtentChange?.(null)
+    props.onPrintSelectionPointsChange?.(null)
+
+    const draw = new Draw({
+      source,
+      type: "Circle",
+      geometryFunction: createBox(),
+    })
+
+    let dragStart: [number, number] | null = null
+
+    draw.on("drawstart", (evt: any) => {
+      source.clear()
+      const c = evt?.coordinate
+      if (Array.isArray(c) && c.length >= 2) {
+        dragStart = [Number(c[0]), Number(c[1])]
+      } else {
+        dragStart = null
+      }
+    })
+
+    draw.on("drawend", (evt: any) => {
+      const geom = evt.feature?.getGeometry?.()
+      const ext = geom?.getExtent?.() as [number, number, number, number] | undefined
+      if (ext) props.onPrintSelectionExtentChange?.(ext)
+
+      const endCoord = evt?.coordinate
+      if (dragStart && Array.isArray(endCoord) && endCoord.length >= 2) {
+        props.onPrintSelectionPointsChange?.({
+          start: dragStart,
+          end: [Number(endCoord[0]), Number(endCoord[1])],
+        })
+      } else if (ext) {
+        // Fallback: use extent corners if event coordinates are not available
+        props.onPrintSelectionPointsChange?.({ start: [ext[0], ext[1]], end: [ext[2], ext[3]] })
+      }
+    })
+
+    const modify = new Modify({ source, insertVertexCondition: never })
+    modify.on("modifyend", () => {
+      const features = source.getFeatures()
+      const f0 = features[0]
+      if (f0) snapFeatureToExtent(f0)
+    })
+
+    map.addInteraction(draw)
+    map.addInteraction(modify)
+
+    printLayerRef.current = layer
+    printSourceRef.current = source
+    printDrawRef.current = draw
+    printModifyRef.current = modify
+
+    try {
+      map.getViewport().style.cursor = "crosshair"
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      map.removeInteraction(draw)
+      map.removeInteraction(modify)
+      map.removeLayer(layer)
+
+      try {
+        for (const f of source.getFeatures()) detachGeomListener(f)
+      } catch {
+        // ignore
+      }
+
+      try {
+        source.un("addfeature", onAddFeature)
+        source.un("removefeature", onRemoveFeature)
+      } catch {
+        // ignore
+      }
+
+      printDrawRef.current = null
+      printModifyRef.current = null
+      printLayerRef.current = null
+      printSourceRef.current = null
+      try {
+        map.getViewport().style.cursor = ""
+      } catch {
+        // ignore
+      }
+    }
+  }, [mapInstance, props.printMode])
 
   useEffect(() => {
     const map = mapInstance

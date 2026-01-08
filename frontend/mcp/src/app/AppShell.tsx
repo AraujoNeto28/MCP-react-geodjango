@@ -18,6 +18,11 @@ import { FeatureTable } from "../widgets/featureTable/FeatureTable"
 import { Button } from "../components/ui/Button"
 import { cn } from "../lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "../components/ui/Alert"
+import { Checkbox } from "../components/ui/Checkbox"
+import { Label } from "../components/ui/Label"
+import { printMapSelection } from "../map/print"
+import { Input } from "../components/ui/Input"
+import { Select } from "../components/ui/Select"
 
 import type OlMap from "ol/Map"
 
@@ -166,11 +171,23 @@ export function AppShell() {
 
   const [activeBasemap, setActiveBasemap] = useState<BasemapId>("carto-positron")
 
-  const [sidebarView, setSidebarView] = useState<"actions" | "layers" | "search" | "basemaps" | "searchAddress" | "legends" | "coordinateLocator">("actions")
+  const [sidebarView, setSidebarView] = useState<
+    "actions" | "layers" | "search" | "basemaps" | "searchAddress" | "legends" | "coordinateLocator" | "print"
+  >("actions")
 
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const [map, setMap] = useState<OlMap | null>(null)
+  const [printMode, setPrintMode] = useState(false)
+  const [printIncludeLegends, setPrintIncludeLegends] = useState(true)
+  const [printSelectionExtent, setPrintSelectionExtent] = useState<[number, number, number, number] | null>(null)
+  const [printSelectionPoints, setPrintSelectionPoints] = useState<
+    { start: [number, number]; end: [number, number] } | null
+  >(null)
+  const [printTitle, setPrintTitle] = useState("Mapa Porto Alegre")
+  const [printDpi, setPrintDpi] = useState<72 | 96 | 150 | 300>(150)
+  const [printOrientation, setPrintOrientation] = useState<"portrait" | "landscape">("landscape")
+  const [printPaper, setPrintPaper] = useState<"A4" | "A3" | "Letter" | "Legal">("A4")
   const [featureTableLayerId, setFeatureTableLayerId] = useState<string | null>(null)
   const [featureTableMinimized, setFeatureTableMinimized] = useState<boolean>(false)
   const [featureTableMode, setFeatureTableMode] = useState<"layer" | "search">("layer")
@@ -198,7 +215,7 @@ export function AppShell() {
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-zinc-50">
       {/* Mobile app bar */}
-      <div className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-zinc-200 bg-white px-4 shadow-sm md:hidden">
+      <div className="fixed left-0 right-0 top-0 z-40 flex h-14 items-center gap-3 border-b border-zinc-200 bg-white px-4 shadow-sm md:hidden">
         <Button
           variant="ghost"
           size="icon"
@@ -239,7 +256,7 @@ export function AppShell() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-80 shrink-0 bg-white transition-all duration-300 ease-in-out md:static md:z-auto md:translate-x-0 md:flex md:h-full md:flex-col shadow-xl md:shadow-none border-r border-zinc-200",
+          "fixed inset-y-0 left-0 z-50 flex h-full flex-col w-64 sm:w-72 md:w-80 shrink-0 bg-white transition-all duration-300 ease-in-out md:static md:z-auto md:translate-x-0 shadow-xl md:shadow-none border-r border-zinc-200",
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full",
           !sidebarOpen && "md:w-0 md:border-none overflow-hidden"
         )}
@@ -254,14 +271,25 @@ export function AppShell() {
                   ? "Camadas"
                   : sidebarView === "search"
                     ? "Buscar"
-                    : "Mapas Base"}
+                    : sidebarView === "legends"
+                      ? "Legendas"
+                      : sidebarView === "searchAddress"
+                        ? "Buscar Endereços"
+                        : sidebarView === "coordinateLocator"
+                          ? "Localizar Coordenada"
+                          : sidebarView === "print"
+                            ? "Imprimir"
+                            : "Mapas Base"}
             </div>
           </div>
           {sidebarView !== "actions" && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSidebarView("actions")}
+              onClick={() => {
+                setSidebarView("actions")
+                setPrintMode(false)
+              }}
               className="text-blue-200 hover:text-white hover:bg-blue-600"
               title="Voltar"
             >
@@ -279,7 +307,7 @@ export function AppShell() {
           )}
         </div>
 
-        <div className="flex-1 overflow-auto bg-zinc-50/50">
+        <div className="min-h-0 flex-1 overflow-auto bg-zinc-50/50">
           {sidebarView === "actions" && (
             <div className="p-4 space-y-3">
               <button
@@ -487,6 +515,38 @@ export function AppShell() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
+
+              <button
+                onClick={() => {
+                  setSidebarView("print")
+                  setMobileSidebarOpen(false)
+                }}
+                className="group flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 text-left shadow-sm transition-all hover:border-zinc-300 hover:shadow-md active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-50 text-zinc-700 group-hover:bg-zinc-100 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <path d="M6 9V2h12v7" />
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                      <path d="M6 14h12v8H6z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-zinc-900">Imprimir mapa</div>
+                    <div className="text-xs text-zinc-500">Selecionar área para impressão</div>
+                  </div>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="h-5 w-5 text-zinc-300 group-hover:text-zinc-500 transition-colors"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
             </div>
           )}
 
@@ -595,6 +655,66 @@ export function AppShell() {
               }}
             />
           )}
+
+          {sidebarView === "print" && (
+            <div className="p-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="printTitle" className="text-sm text-zinc-700">Título do Mapa</Label>
+                <Input id="printTitle" value={printTitle} onChange={(e) => setPrintTitle(e.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="printDpi" className="text-sm text-zinc-700">Resolução (DPI)</Label>
+                <Select id="printDpi" value={String(printDpi)} onChange={(e) => setPrintDpi(Number(e.target.value) as any)}>
+                  <option value="72">72 DPI (Baixa)</option>
+                  <option value="96">96 DPI (Web)</option>
+                  <option value="150">150 DPI (Padrão)</option>
+                  <option value="300">300 DPI (Alta)</option>
+                </Select>
+                <div className="text-xs text-zinc-500">Maior DPI = melhor qualidade e arquivo maior</div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm text-zinc-700">Orientação</Label>
+                <div className="flex gap-2">
+                  <Button type="button" variant={printOrientation === "portrait" ? "default" : "outline"} className="flex-1" onClick={() => setPrintOrientation("portrait")}>
+                    Retrato
+                  </Button>
+                  <Button type="button" variant={printOrientation === "landscape" ? "default" : "outline"} className="flex-1" onClick={() => setPrintOrientation("landscape")}>
+                    Paisagem
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="printPaper" className="text-sm text-zinc-700">Tamanho do Papel</Label>
+                <Select id="printPaper" value={printPaper} onChange={(e) => setPrintPaper(e.target.value as any)}>
+                  <option value="A4">A4 (210 x 297 mm)</option>
+                  <option value="A3">A3 (297 x 420 mm)</option>
+                  <option value="Letter">Letter (8.5 x 11 in)</option>
+                  <option value="Legal">Legal (8.5 x 14 in)</option>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Checkbox checked={printIncludeLegends} onChange={(e) => setPrintIncludeLegends((e.target as HTMLInputElement).checked)} id="printIncludeLegends" />
+                <Label htmlFor="printIncludeLegends" className="text-sm text-zinc-700">
+                  Incluir legendas visíveis no PDF
+                </Label>
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setPrintMode(true)
+                  setSidebarOpen(false)
+                  setMobileSidebarOpen(false)
+                }}
+              >
+                Imprimir
+              </Button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -618,7 +738,7 @@ export function AppShell() {
           )}
         </button>
 
-        <div className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 relative">
           <MapView
             tree={tree}
             visibility={visibility}
@@ -627,7 +747,70 @@ export function AppShell() {
             activeBasemap={activeBasemap}
             searchLocation={searchLocation}
             onMapReady={setMap}
+            printMode={printMode}
+            onPrintSelectionExtentChange={setPrintSelectionExtent}
+            onPrintSelectionPointsChange={setPrintSelectionPoints}
           />
+
+          {printMode && (
+            <div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
+              <Alert className="w-[360px] max-w-[calc(100vw-2rem)] p-3 shadow-md border-zinc-200">
+                <AlertDescription className="text-xs text-zinc-700">
+                  Desenhe um retângulo de seleção para imprimir ou clique em Imprimir para imprimir a tela inteira.
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPrintMode(false)
+                  setSidebarOpen(true)
+                  setSidebarView("print")
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={!map}
+                onClick={async () => {
+                  if (!map) return
+
+                  // If the user didn't draw a selection, print the current viewport.
+                  const selectionExtent =
+                    printSelectionExtent ??
+                    (map.getView().calculateExtent(map.getSize?.() ?? undefined) as [number, number, number, number])
+
+                  try {
+                    await printMapSelection({
+                      map,
+                      selectionExtent,
+                      selectionPoints: printSelectionExtent ? (printSelectionPoints ?? undefined) : undefined,
+                      includeLegends: printIncludeLegends,
+                      title: printTitle,
+                      dpi: printDpi,
+                      orientation: printOrientation,
+                      paper: printPaper,
+                      tree,
+                      visibility,
+                      geoserverBaseUrl: env.geoserverBaseUrl,
+                    })
+                    setPrintMode(false)
+                    setSidebarOpen(true)
+                    setSidebarView("print")
+                  } catch (e: unknown) {
+                    // eslint-disable-next-line no-console
+                    console.error(e)
+                    const msg = e instanceof Error ? e.message : "Falha ao imprimir."
+                    window.alert(msg)
+                  }
+                }}
+              >
+                Imprimir
+              </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className={`${featureTableHeightClass} min-h-0 transition-[height] duration-150`}>

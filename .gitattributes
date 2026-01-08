@@ -1,0 +1,6 @@
+# Ensure shell scripts keep Unix line endings (fixes /usr/bin/env: 'sh\r' errors)
+*.sh text eol=lf
+
+# Common: keep these as text, normalized
+*.py text eol=lf
+*.ps1 text eol=crlf

@@ -1,4 +1,4 @@
-import type { PopupTemplate } from "../features/layers/types"
+import type { PopupTemplate } from "../../features/layers/types"
 
 export type PopupModel = {
   title: string
@@ -13,7 +13,7 @@ export function buildPopupModel(template: unknown, properties: Record<string, un
     const rows = Object.entries(properties)
       .filter(([k, v]) => k !== "geometry" && typeof v !== "object" && typeof v !== "function")
       .map(([k, v]) => ({ label: k, value: String(v) }))
-    
+
     if (rows.length === 0) return null
 
     return {

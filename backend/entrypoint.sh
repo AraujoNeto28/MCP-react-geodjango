@@ -19,16 +19,16 @@ password = os.environ.get("DJANGO_SUPERUSER_PASSWORD")
 email = os.environ.get("DJANGO_SUPERUSER_EMAIL") or ""
 
 if username and password:
-	user, created = User.objects.get_or_create(username=username, defaults={"email": email})
-	if email and not user.email:
-		user.email = email
-	user.is_staff = True
-	user.is_superuser = True
-	user.set_password(password)
-	user.save()
-	print(f"Superuser ensured: {username} ({'created' if created else 'updated'})")
+    user, created = User.objects.get_or_create(username=username, defaults={"email": email})
+    if email and not user.email:
+        user.email = email
+    user.is_staff = True
+    user.is_superuser = True
+    user.set_password(password)
+    user.save()
+    print(f"Superuser ensured: {username} ({'created' if created else 'updated'})")
 else:
-	print("Superuser env vars not set; skipping")
+    print("Superuser env vars not set; skipping")
 PY
 
-exec python manage.py runserver 0.0.0.0:3000
+exec python manage.py runserver 0.0.0.0:3001
