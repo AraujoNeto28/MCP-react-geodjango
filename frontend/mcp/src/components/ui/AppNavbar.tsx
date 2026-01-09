@@ -1,5 +1,5 @@
 import { Alert, AlertDescription, AlertTitle } from "./Alert"
-import { BasemapsPanel } from "../../features/map/BasemapsPanel"
+import { BasemapsPanel } from "../../features/basemaps/BasemapsPanel"
 import { Button } from "./Button"
 import { Checkbox } from "./Checkbox"
 import { CoordinateLocatorPanel } from "../../features/search/CoordinateLocatorPanel"
@@ -7,13 +7,13 @@ import type { RootGroupDto } from "../../features/layers/types"
 import { Input } from "./Input"
 import { Label } from "./Label"
 import { LayerTree } from "../../features/layers/LayerTree"
-import { LegendsPanel } from "../../features/layers/LegendsPanel"
+import { LegendsPanel } from "../../features/legends/LegendsPanel"
 import { SearchAddressPanel } from "../../features/search/SearchAddressPanel"
 import { SearchPanel } from "../../features/search/SearchPanel"
 import { Select } from "./Select"
 import { UploadLayerPanel } from "../../features/upload/UploadLayerPanel"
 import type { UploadLayerResponse } from "../../features/upload/types"
-import type { BasemapId } from "../../features/map/basemaps"
+import type { BasemapId } from "../../features/basemaps/basemaps"
 import type { LayerVisibilityState } from "../../map/olLayerFactory"
 
 import { ActionIcon, AppShell as MantineAppShell, Box, Group, ScrollArea, Text } from "@mantine/core"
@@ -81,7 +81,6 @@ export function AppNavbar(props: AppNavbarProps) {
 		sidebarOpen,
 		onToggleSidebarOpen,
 		sidebarView,
-		sidebarSubtitle,
 		onBackToActions,
 		setSidebarView,
 		apiBaseUrl,
@@ -115,48 +114,77 @@ export function AppNavbar(props: AppNavbarProps) {
 		onStartPrintMode,
 	} = props
 
+	if (!sidebarOpen) {
+		return (
+			<MantineAppShell.Navbar>
+				<Box
+					style={{
+						height: "100%",
+						position: "relative",
+						backgroundColor: "var(--mantine-color-body)",
+						borderRight: "1px solid var(--mantine-color-gray-3)",
+					}}
+				>
+					<ActionIcon
+						variant="default"
+						size="lg"
+						radius="xl"
+						visibleFrom="sm"
+						onClick={onToggleSidebarOpen}
+						title="Mostrar menu"
+						style={{
+							position: "absolute",
+							top: "50%",
+							right: -18,
+							transform: "translateY(-50%)",
+							zIndex: 10,
+						}}
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+							width="18"
+							height="18"
+						>
+							<path
+								fillRule="evenodd"
+								d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+								clipRule="evenodd"
+							/>
+						</svg>
+					</ActionIcon>
+				</Box>
+			</MantineAppShell.Navbar>
+		)
+	}
+
 	return (
 		<MantineAppShell.Navbar>
-			<MantineAppShell.Section>
-				<Box p="md">
-					<Group justify="space-between" align="flex-start" wrap="nowrap">
-						<div style={{ minWidth: 0 }}>
-							<Text fw={700} truncate>
-								WebGIS
-							</Text>
-							<Text size="xs" c="dimmed" truncate>
-								{sidebarSubtitle}
-							</Text>
-						</div>
-
-						<Group gap={4} wrap="nowrap">
-							<ActionIcon
-								variant="subtle"
-								visibleFrom="sm"
-								onClick={onToggleSidebarOpen}
-								title={sidebarOpen ? "Esconder menu" : "Mostrar menu"}
-							>
-								{sidebarOpen ? (
-									<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
-										<path
-											fillRule="evenodd"
-											d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
-											clipRule="evenodd"
-										/>
-									</svg>
-								) : (
-									<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
-										<path
-											fillRule="evenodd"
-											d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-											clipRule="evenodd"
-										/>
-									</svg>
-								)}
-							</ActionIcon>
+			<Box style={{ position: "relative", height: "100%" }}>
+				<MantineAppShell.Section>
+					<Box
+						p="md"
+						style={{
+							backgroundImage:
+								"linear-gradient(90deg, var(--mantine-color-gray-9), var(--mantine-color-gray-7))",
+							borderBottom: "1px solid rgba(255, 255, 255, 0.18)",
+						}}
+					>
+						<Group justify="space-between" align="flex-start" wrap="nowrap">
+							<div style={{ minWidth: 0 }}>
+								<Text fw={700} truncate c="white">
+									Menu Principal
+								</Text>
+							</div>
 
 							{sidebarView !== "actions" && (
-								<ActionIcon variant="subtle" onClick={onBackToActions} title="Voltar">
+								<ActionIcon
+									variant="subtle"
+									onClick={onBackToActions}
+									title="Voltar"
+									style={{ color: "white" }}
+								>
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
 										fill="none"
@@ -175,12 +203,11 @@ export function AppNavbar(props: AppNavbarProps) {
 								</ActionIcon>
 							)}
 						</Group>
-					</Group>
-				</Box>
-			</MantineAppShell.Section>
+					</Box>
+				</MantineAppShell.Section>
 
-			<MantineAppShell.Section grow component={ScrollArea}>
-				<div className="min-h-0 flex-1 overflow-auto bg-zinc-50/50">
+				<MantineAppShell.Section grow component={ScrollArea}>
+					<div className="min-h-0 flex-1 overflow-auto bg-zinc-50/50">
 					{sidebarView === "actions" && (
 						<div className="p-4 space-y-3">
 							<AppNavLink
@@ -515,8 +542,35 @@ export function AppNavbar(props: AppNavbarProps) {
 							</Button>
 						</div>
 					)}
-				</div>
-			</MantineAppShell.Section>
+					</div>
+				</MantineAppShell.Section>
+
+				{sidebarOpen && (
+					<ActionIcon
+						variant="default"
+						size="lg"
+						radius="xl"
+						visibleFrom="sm"
+						onClick={onToggleSidebarOpen}
+						title="Esconder menu"
+						style={{
+							position: "absolute",
+							top: "50%",
+							right: -18,
+							transform: "translateY(-50%)",
+							zIndex: 10,
+						}}
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+							<path
+								fillRule="evenodd"
+								d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"
+								clipRule="evenodd"
+							/>
+						</svg>
+					</ActionIcon>
+				)}
+			</Box>
 		</MantineAppShell.Navbar>
 	)
 }

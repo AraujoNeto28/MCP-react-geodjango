@@ -1,4 +1,4 @@
-import type { RootGroupDto, LayerDto } from "./types"
+import type { RootGroupDto, LayerDto } from "../layers/types"
 import type { LayerVisibilityState } from "../../map/olLayerFactory"
 import { cn } from "../../lib/utils"
 
@@ -25,11 +25,19 @@ function EyeIcon({ visible, onClick }: { visible: boolean; onClick: () => void }
       {visible ? (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
           <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-          <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+          <path
+            fillRule="evenodd"
+            d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+            clipRule="evenodd"
+          />
         </svg>
       ) : (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
-          <path fillRule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-5.975.75.75 0 000-1.186 10.004 10.004 0 00-14.382-3.32l-1.673-1.673zM10 13a3 3 0 100-6 3 3 0 000 6zm-4-3a4 4 0 114 4 4 4 0 01-4-4z" clipRule="evenodd" />
+          <path
+            fillRule="evenodd"
+            d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-5.975.75.75 0 000-1.186 10.004 10.004 0 00-14.382-3.32l-1.673-1.673zM10 13a3 3 0 100-6 3 3 0 000 6zm-4-3a4 4 0 114 4 4 4 0 01-4-4z"
+            clipRule="evenodd"
+          />
           <path d="M9.847 15.153l-1.347-1.347A4.98 4.98 0 0010 14c.82 0 1.596-.198 2.285-.548l1.348 1.348A6.97 6.97 0 0110 15z" />
         </svg>
       )}
@@ -47,7 +55,16 @@ function LabelIcon({ visible, onClick }: { visible: boolean; onClick: () => void
       )}
       title={visible ? "Ocultar rótulos" : "Mostrar rótulos"}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-3 w-3"
+      >
         <path d="M4 7V4h16v3" />
         <path d="M9 20h6" />
         <path d="M12 4v16" />
@@ -105,7 +122,7 @@ function WfsLegend({ styleConfig }: { styleConfig: any }) {
 function WmsLegend({ geoserverBaseUrl, layer }: { geoserverBaseUrl: string; layer: LayerDto }) {
   // Request larger legend graphic
   const url = `${geoserverBaseUrl.replace(/\/$/, "")}/wms?REQUEST=GetLegendGraphic&VERSION=1.0.0&FORMAT=image/png&WIDTH=20&HEIGHT=20&LAYER=${layer.workspace}:${layer.layerName}&LEGEND_OPTIONS=fontName:Arial;fontSize:11;fontAntiAliasing:true;dpi:96`
-  
+
   return (
     <div className="py-1">
       <img src={url} alt={layer.title} className="max-w-full" />
@@ -138,7 +155,7 @@ function LegendItem({
           <EyeIcon visible={isVisible} onClick={() => onToggleLayer(layer.id, !isVisible)} />
         </div>
       </div>
-      
+
       <div className={cn("pl-1", !isVisible && "opacity-50 grayscale")}>
         {layer.serviceType === "WFS" ? (
           <div className="flex items-start gap-1.5">
@@ -160,19 +177,24 @@ export function LegendsPanel(props: Props) {
     <div className="space-y-4 p-3">
       {props.tree.map((root) => {
         const isRootVisible = props.visibility.rootVisibleById[root.id] ?? true
-        
+
         return (
           <div key={root.id} className="space-y-2">
             <div className="flex items-center justify-between px-1">
               <h3 className="font-semibold text-zinc-900 flex items-center gap-1.5 text-xs">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-yellow-400">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="w-3.5 h-3.5 text-yellow-400"
+                >
                   <path d="M19.5 21a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-5.379a2.25 2.25 0 0 1-1.59-.659l-2.122-2.121a.75.75 0 0 0-.53-.22H4.5a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h15Z" />
                 </svg>
                 {root.title}
               </h3>
               <EyeIcon visible={isRootVisible} onClick={() => props.onToggleRoot(root.id, !isRootVisible)} />
             </div>
-            
+
             <div className="space-y-3 pl-1">
               {/* Root Layers */}
               {root.layers.length > 0 && (
@@ -193,7 +215,7 @@ export function LegendsPanel(props: Props) {
               {/* Thematic Groups */}
               {root.thematicGroups.map((group) => {
                 const isGroupVisible = props.visibility.groupVisibleById[group.id] ?? true
-                
+
                 return (
                   <div key={group.id} className="rounded-md border border-zinc-200 bg-zinc-50/50 p-2">
                     <div className="flex items-center justify-between mb-2">
@@ -202,7 +224,7 @@ export function LegendsPanel(props: Props) {
                       </div>
                       <EyeIcon visible={isGroupVisible} onClick={() => props.onToggleGroup(group.id, !isGroupVisible)} />
                     </div>
-                    
+
                     <div className="space-y-2">
                       {group.layers.map((layer) => (
                         <LegendItem

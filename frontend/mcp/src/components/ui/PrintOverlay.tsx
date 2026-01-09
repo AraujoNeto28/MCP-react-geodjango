@@ -15,9 +15,20 @@ export function PrintOverlay(props: PrintOverlayProps) {
 	if (!open) return null
 
 	return (
-		<div className="absolute top-4 left-4 z-30 flex flex-col gap-2">
-			<Alert className="w-[360px] max-w-[calc(100vw-2rem)] p-3 shadow-md border-zinc-200">
-				<AlertDescription className="text-xs text-zinc-700">
+		<div
+			className="fixed top-14 left-1/2 -translate-x-1/2 flex flex-col gap-2"
+			style={{ zIndex: 12_000 }}
+		>
+			<Alert
+				className="w-[360px] max-w-[calc(100vw-2rem)] p-3 shadow-md"
+				styles={{
+					root: {
+						backgroundColor: "var(--mantine-color-body)",
+						border: "1px solid var(--mantine-color-gray-3)",
+					},
+				}}
+			>
+				<AlertDescription className="text-sm text-zinc-900 leading-snug">
 					Desenhe um retângulo de seleção para imprimir ou clique em Imprimir para imprimir a tela inteira.
 				</AlertDescription>
 			</Alert>

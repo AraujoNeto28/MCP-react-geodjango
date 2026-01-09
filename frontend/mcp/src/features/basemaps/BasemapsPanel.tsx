@@ -24,10 +24,7 @@ export function BasemapsPanel({ activeBasemap, onBasemapChange }: BasemapsPanelP
               checked={activeBasemap === basemap.id}
               onChange={() => onBasemapChange(basemap.id)}
             />
-            <Label
-              htmlFor={`basemap-${basemap.id}`}
-              className="flex-1 cursor-pointer font-medium text-zinc-700"
-            >
+            <Label htmlFor={`basemap-${basemap.id}`} className="flex-1 cursor-pointer font-medium text-zinc-700">
               {basemap.label}
             </Label>
           </div>

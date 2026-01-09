@@ -1,7 +1,7 @@
 import type OlMap from "ol/Map"
 
 import type { RootGroupDto } from "../../features/layers/types"
-import type { BasemapId } from "../../features/map/basemaps"
+import type { BasemapId } from "../../features/basemaps/basemaps"
 import type { UploadLayerResponse } from "../../features/upload/types"
 import type { GeoServerLayerAvailability, LayerVisibilityState } from "../../map/olLayerFactory"
 
@@ -164,9 +164,14 @@ export function AppShell(props: AppShellProps) {
 				// NOTE: Mantine forces navbar width to 100% when viewport < breakpoint.
 				// To keep a narrower navbar on mobile and still see/interact with the map,
 				// we disable "mobile mode" by setting breakpoint=0 and handle collapse ourselves.
-				width: { base: 230, sm: 320 },
+				width: isMobile
+					? { base: 230, sm: 320 }
+					: sidebarOpen
+						? { base: 230, sm: 320 }
+						: { base: 18, sm: 18 },
 				breakpoint: 0,
-				collapsed: { desktop: isMobile ? !mobileSidebarOpen : !sidebarOpen },
+				// On desktop we keep a thin "rail" visible when closed.
+				collapsed: { desktop: isMobile ? !mobileSidebarOpen : false },
 			}}
 			padding={0}
 		>

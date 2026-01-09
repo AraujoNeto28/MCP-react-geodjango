@@ -1,7 +1,7 @@
+import BaseLayer from "ol/layer/Base"
+import TileLayer from "ol/layer/Tile"
 import OSM from "ol/source/OSM"
 import XYZ from "ol/source/XYZ"
-import TileLayer from "ol/layer/Tile"
-import BaseLayer from "ol/layer/Base"
 
 export type BasemapId = "osm" | "carto-positron" | "carto-dark" | "esri-imagery" | "esri-imagery-labels"
 

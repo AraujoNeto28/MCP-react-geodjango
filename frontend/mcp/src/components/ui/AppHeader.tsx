@@ -9,11 +9,24 @@ export function AppHeader(props: AppHeaderProps) {
 	const { mobileSidebarOpen, onToggleMobileSidebar } = props
 
 	return (
-		<MantineAppShell.Header>
+		<MantineAppShell.Header
+			style={{
+				backgroundImage: "linear-gradient(90deg, var(--mantine-color-blue-9), var(--mantine-color-indigo-9))",
+				borderBottom: "1px solid rgba(255, 255, 255, 0.18)",
+			}}
+		>
 			<Group h="100%" px="md" justify="space-between" wrap="nowrap">
 				<Group gap="sm" wrap="nowrap">
-					<Burger opened={mobileSidebarOpen} onClick={onToggleMobileSidebar} hiddenFrom="sm" size="sm" />
-					<Text fw={700}>WebGIS</Text>
+					<Burger
+						opened={mobileSidebarOpen}
+						onClick={onToggleMobileSidebar}
+						hiddenFrom="sm"
+						size="sm"
+						color="white"
+					/>
+					<Text fw={700} c="white">
+						MCP - Mapa Configuravel de Porto Alegre
+					</Text>
 				</Group>
 			</Group>
 		</MantineAppShell.Header>

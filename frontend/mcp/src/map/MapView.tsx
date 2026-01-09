@@ -20,7 +20,7 @@ import { buildLayersFromTree, type GeoServerLayerAvailability, type LayerVisibil
 import { createFeatureStyle } from "./olStyles"
 import { buildPopupModel } from "../widgets/popup/popupTemplate"
 import { Popup } from "../widgets/popup/Popup"
-import { BASEMAPS, type BasemapId } from "../features/map/basemaps"
+import { BASEMAPS, type BasemapId } from "../features/basemaps/basemaps"
 import { DrawTools } from "../widgets/drawTools/DrawTools"
 import { MeasureTools } from "../widgets/measureTools/MeasureTools"
 import LayerGroup from "ol/layer/Group"
@@ -553,6 +553,13 @@ export function MapView(props: Props) {
     }
 
     const onClick = (evt: any) => {
+      // While selecting a print area we don't want click-to-open popups.
+      // OL can still fire a singleclick after a drag selection.
+      if (props.printMode) {
+        closePopup()
+        return
+      }
+
       const rawHits: Array<{ feature: any; layer: any }> = []
       map.forEachFeatureAtPixel(
         evt.pixel,
@@ -597,7 +604,7 @@ export function MapView(props: Props) {
     return () => {
       map.un("singleclick", onClick)
     }
-  }, [mapInstance])
+  }, [mapInstance, props.printMode])
 
   useEffect(() => {
     const map = mapInstance
