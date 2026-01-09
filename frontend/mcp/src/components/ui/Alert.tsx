@@ -1,46 +1,80 @@
-import * as React from "react"
-import { cn } from "../../lib/utils"
+import React from "react"
 
-const Alert = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { variant?: "default" | "destructive" }
->(({ className, variant = "default", ...props }, ref) => (
-  <div
-    ref={ref}
-    role="alert"
-    className={cn(
-      "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-zinc-950",
-      variant === "default" && "bg-white text-zinc-950",
-      variant === "destructive" && "border-red-500/50 text-red-500 dark:border-red-500 [&>svg]:text-red-500",
-      className
-    )}
-    {...props}
-  />
-))
-Alert.displayName = "Alert"
+import {
+  Alert as MantineAlert,
+  type AlertProps as MantineAlertProps,
+  type MantineColor,
+} from "@mantine/core"
 
-const AlertTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h5
-    ref={ref}
-    className={cn("mb-1 font-medium leading-none tracking-tight", className)}
-    {...props}
-  />
-))
-AlertTitle.displayName = "AlertTitle"
+export type AlertVariant = "default" | "destructive"
 
-const AlertDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("text-sm [&_p]:leading-relaxed", className)}
-    {...props}
-  />
-))
-AlertDescription.displayName = "AlertDescription"
+type LocalAlertProps = Omit<MantineAlertProps, "variant" | "color" | "title" | "children"> & {
+  variant?: AlertVariant
+  color?: MantineColor
+  title?: React.ReactNode
+  children?: React.ReactNode
+}
 
-export { Alert, AlertTitle, AlertDescription }
+type AlertTitleProps = React.HTMLAttributes<HTMLSpanElement> & {
+  children?: React.ReactNode
+}
+
+type AlertDescriptionProps = React.HTMLAttributes<HTMLDivElement> & {
+  children?: React.ReactNode
+}
+
+export function Alert(props: LocalAlertProps) {
+  const { variant = "default", color, title, children, ...rest } = props
+
+  let extractedTitle: React.ReactNode | undefined = title
+  const body: React.ReactNode[] = []
+
+  for (const child of React.Children.toArray(children)) {
+    if (React.isValidElement(child) && child.type === AlertTitle) {
+      const titleEl = child as React.ReactElement<AlertTitleProps>
+      extractedTitle = (
+        <span className={titleEl.props.className} style={titleEl.props.style}>
+          {titleEl.props.children}
+        </span>
+      )
+      continue
+    }
+    if (React.isValidElement(child) && child.type === AlertDescription) {
+      const descEl = child as React.ReactElement<AlertDescriptionProps>
+      body.push(
+        <div className={descEl.props.className} style={descEl.props.style}>
+          {descEl.props.children}
+        </div>
+      )
+      continue
+    }
+    body.push(child)
+  }
+
+  const effectiveColor: MantineColor | undefined = color ?? (variant === "destructive" ? "red" : undefined)
+  const effectiveBody = body.length > 0 ? body : children
+
+  return (
+    <MantineAlert {...rest} variant="light" color={effectiveColor} title={extractedTitle}>
+      {effectiveBody}
+    </MantineAlert>
+  )
+}
+
+export function AlertTitle(props: AlertTitleProps) {
+  const { children, ...rest } = props
+  return (
+    <span {...rest}>
+      {children}
+    </span>
+  )
+}
+
+export function AlertDescription(props: AlertDescriptionProps) {
+  const { children, ...rest } = props
+  return (
+    <div {...rest}>
+      {children}
+    </div>
+  )
+}

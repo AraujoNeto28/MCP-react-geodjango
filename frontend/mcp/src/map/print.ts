@@ -755,7 +755,7 @@ function compositeMapCanvases(map: any): HTMLCanvasElement {
   canvas.width = Math.round(width * pixelRatio)
   canvas.height = Math.round(height * pixelRatio)
 
-  const ctx = canvas.getContext("2d")
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })
   if (!ctx) throw new Error("Canvas 2D indisponível")
 
   ctx.scale(pixelRatio, pixelRatio)
@@ -813,7 +813,7 @@ function cropToSelection(map: any, fullCanvas: HTMLCanvasElement, selectionExten
   out.width = Math.max(1, Math.round(sw * outputScale))
   out.height = Math.max(1, Math.round(sh * outputScale))
 
-  const ctx = out.getContext("2d")
+  const ctx = out.getContext("2d", { willReadFrequently: true })
   if (!ctx) throw new Error("Canvas 2D indisponível")
 
   ctx.imageSmoothingEnabled = true

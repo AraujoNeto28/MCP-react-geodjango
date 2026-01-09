@@ -21,7 +21,8 @@ function tableIcon(className?: string) {
   )
 }
 
-function FolderIcon(props: { className?: string; open?: boolean }) {
+function FolderIcon(props: { className?: string; open?: boolean; colorClassName?: string }) {
+  const color = props.colorClassName ?? "text-yellow-400"
   if (props.open) {
     return (
       <svg
@@ -30,7 +31,7 @@ function FolderIcon(props: { className?: string; open?: boolean }) {
         fill="currentColor"
         stroke="currentColor"
         strokeWidth={0}
-        className={cn("text-yellow-400", props.className)}
+        className={cn(color, props.className)}
         aria-hidden="true"
       >
         <path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" />
@@ -44,7 +45,7 @@ function FolderIcon(props: { className?: string; open?: boolean }) {
       fill="currentColor"
       stroke="currentColor"
       strokeWidth={0}
-      className={cn("text-yellow-400", props.className)}
+      className={cn(color, props.className)}
       aria-hidden="true"
     >
       <path d="M19.5 21a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-5.379a2.25 2.25 0 0 1-1.59-.659l-2.122-2.121a.75.75 0 0 0-.53-.22H4.5a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h15Z" />
@@ -106,6 +107,7 @@ export function LayerTree(props: Props) {
         .sort((a, b) => a.order - b.order)
         .map((root) => {
           const rootExpanded = isExpanded(root.id)
+          const isUploadsRoot = root.id === "userUploads"
           return (
             <div key={root.id} className="space-y-2">
               <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
@@ -114,7 +116,7 @@ export function LayerTree(props: Props) {
                   label={root.title}
                   onChange={(checked) => props.onToggleRoot(root.id, checked)}
                   className="font-medium"
-                  icon={<FolderIcon open={rootExpanded} className="h-5 w-5" />}
+                  icon={<FolderIcon open={rootExpanded} className="h-5 w-5" colorClassName={isUploadsRoot ? "text-green-600" : undefined} />}
                   onIconClick={() => toggleExpand(root.id)}
                 />
                 <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{root.serviceType}</span>

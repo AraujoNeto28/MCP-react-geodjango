@@ -1,44 +1,67 @@
-import * as React from "react"
-import { cn } from "../../lib/utils"
+import React from "react"
+import { Button as MantineButton, type ButtonProps as MantineButtonProps, type MantineColor } from "@mantine/core"
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
-  size?: "default" | "sm" | "lg" | "icon"
+export type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+export type ButtonSize = "default" | "sm" | "lg" | "icon"
+
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+  Omit<MantineButtonProps, "variant" | "size" | "color"> & {
+    variant?: ButtonVariant
+    size?: ButtonSize
+    color?: MantineColor
+  }
+
+function mapVariant(variant: ButtonVariant): { variant: MantineButtonProps["variant"]; color?: MantineColor } {
+  switch (variant) {
+    case "destructive":
+      return { variant: "filled", color: "red" }
+    case "outline":
+      return { variant: "outline" }
+    case "secondary":
+      return { variant: "light", color: "gray" }
+    case "ghost":
+      return { variant: "subtle", color: "gray" }
+    case "link":
+      return { variant: "subtle" }
+    case "default":
+    default:
+      return { variant: "filled" }
+  }
+}
+
+function mapSize(size: ButtonSize): MantineButtonProps["size"] {
+  switch (size) {
+    case "sm":
+      return "xs"
+    case "lg":
+      return "md"
+    case "icon":
+      return "sm"
+    case "default":
+    default:
+      return "sm"
+  }
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "default", ...props }, ref) => {
-    const variants = {
-      default: "bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90",
-      destructive: "bg-red-500 text-zinc-50 hover:bg-red-500/90",
-      outline: "border border-zinc-200 bg-white hover:bg-zinc-100 hover:text-zinc-900",
-      secondary: "bg-zinc-100 text-zinc-900 hover:bg-zinc-100/80",
-      ghost: "hover:bg-zinc-100 hover:text-zinc-900",
-      link: "text-zinc-900 underline-offset-4 hover:underline",
-    }
-
-    const sizes = {
-      default: "h-10 px-4 py-2",
-      sm: "h-9 rounded-md px-3",
-      lg: "h-11 rounded-md px-8",
-      icon: "h-10 w-10",
-    }
+  ({ variant = "default", size = "default", color, radius, className, ...rest }, ref) => {
+    const mappedVariant = mapVariant(variant)
+    const mappedSize = mapSize(size)
 
     return (
-      <button
-        className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-          variants[variant],
-          sizes[size],
-          className
-        )}
+      <MantineButton
         ref={ref}
-        {...props}
+        className={className}
+        variant={mappedVariant.variant}
+        size={mappedSize}
+        color={color ?? mappedVariant.color}
+        radius={radius ?? "md"}
+        {...rest}
       />
     )
   }
 )
+
 Button.displayName = "Button"
 
 export { Button }

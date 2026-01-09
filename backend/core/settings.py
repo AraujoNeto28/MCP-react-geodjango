@@ -132,6 +132,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# Upload limits
+# Values are in bytes.
+# DATA_UPLOAD_MAX_MEMORY_SIZE caps total request size; keep it aligned with your maximum allowed upload.
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv('DJANGO_DATA_UPLOAD_MAX_MEMORY_SIZE', str(50 * 1024 * 1024)))  # 50 MB
+# FILE_UPLOAD_MAX_MEMORY_SIZE controls when Django spills upload buffers to temp files (not a total size cap).
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv('DJANGO_FILE_UPLOAD_MAX_MEMORY_SIZE', str(10 * 1024 * 1024)))  # 10 MB
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 

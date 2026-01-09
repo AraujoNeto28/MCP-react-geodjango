@@ -1,4 +1,4 @@
-export type ServiceType = "WFS" | "WMS"
+export type ServiceType = "WFS" | "WMS" | "LOCAL"
 
 export type GeometryType = "Point" | "LineString" | "Polygon"
 

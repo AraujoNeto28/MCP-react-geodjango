@@ -42,4 +42,5 @@ urlpatterns = [
         views.geoserver_layer_suggest,
         name="geoserver_layer_suggest",
     ),
+    path("layers/upload/", views.upload_user_layer, name="upload_user_layer"),
 ]

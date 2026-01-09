@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { MantineProvider } from "@mantine/core"
 
 import Map from "ol/Map"
 import View from "ol/View"
 import { defaults as defaultControls, Attribution, ScaleLine } from "ol/control"
-import { fromLonLat } from "ol/proj"
+import { fromLonLat, toLonLat, transform } from "ol/proj"
 import Overlay from "ol/Overlay"
 import Draw, { createBox } from "ol/interaction/Draw"
 import Modify from "ol/interaction/Modify"
@@ -23,6 +24,10 @@ import { BASEMAPS, type BasemapId } from "../features/map/basemaps"
 import { DrawTools } from "../widgets/drawTools/DrawTools"
 import { MeasureTools } from "../widgets/measureTools/MeasureTools"
 import LayerGroup from "ol/layer/Group"
+import { ensureProjectionsRegistered } from "./projections"
+import { MapContextMenu } from "./MapContextMenu"
+import { LocationPopup } from "../widgets/popup/LocationPopup"
+import { reverseGeocodeNominatim } from "../features/search/addressApi"
 
 type Props = {
   tree: RootGroupDto[]
@@ -66,6 +71,16 @@ export function MapView(props: Props) {
 
   const searchMarkerOverlayRef = useRef<Overlay | null>(null)
   const searchMarkerElRef = useRef<HTMLDivElement | null>(null)
+
+  const contextMenuOverlayRef = useRef<Overlay | null>(null)
+  const contextMenuElRef = useRef<HTMLDivElement | null>(null)
+  const contextMenuRootRef = useRef<Root | null>(null)
+  const contextMenuCoordinateRef = useRef<[number, number] | null>(null)
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false)
+
+  const locationOverlayRef = useRef<Overlay | null>(null)
+  const locationElRef = useRef<HTMLDivElement | null>(null)
+  const locationRootRef = useRef<Root | null>(null)
 
   const layersBundle = useMemo(
     // Important: don't rebuild OL layers on availability updates, or we drop loaded vector features.
@@ -151,6 +166,36 @@ export function MapView(props: Props) {
     popupOverlayRef.current = overlay
     map.addOverlay(overlay)
 
+    // Context Menu Overlay
+    const contextMenuEl = document.createElement("div")
+    contextMenuEl.className = "pointer-events-auto"
+    contextMenuElRef.current = contextMenuEl
+
+    const contextMenuOverlay = new Overlay({
+      element: contextMenuEl,
+      positioning: "top-left",
+      offset: [8, 8],
+      stopEvent: true,
+      autoPan: false,
+    })
+    contextMenuOverlayRef.current = contextMenuOverlay
+    map.addOverlay(contextMenuOverlay)
+
+    // Location Popup Overlay
+    const locationEl = document.createElement("div")
+    locationEl.className = "pointer-events-auto"
+    locationElRef.current = locationEl
+
+    const locationOverlay = new Overlay({
+      element: locationEl,
+      positioning: "bottom-center",
+      offset: [0, -12],
+      stopEvent: true,
+      autoPan: { animation: { duration: 150 } },
+    })
+    locationOverlayRef.current = locationOverlay
+    map.addOverlay(locationOverlay)
+
     // Popup selection highlight layer (so users know which feature the open popup belongs to)
     const popupSelSource = new VectorSource()
     // High-contrast highlight (white halo + blue stroke) so it shows above vivid basemaps.
@@ -205,6 +250,23 @@ export function MapView(props: Props) {
       popupOverlayRef.current = null
       popupElementRef.current = null
 
+      if (contextMenuRootRef.current) {
+        contextMenuRootRef.current.unmount()
+        contextMenuRootRef.current = null
+      }
+      if (contextMenuOverlayRef.current) map.removeOverlay(contextMenuOverlayRef.current)
+      contextMenuOverlayRef.current = null
+      contextMenuElRef.current = null
+      contextMenuCoordinateRef.current = null
+
+      if (locationRootRef.current) {
+        locationRootRef.current.unmount()
+        locationRootRef.current = null
+      }
+      if (locationOverlayRef.current) map.removeOverlay(locationOverlayRef.current)
+      locationOverlayRef.current = null
+      locationElRef.current = null
+
       if (popupSelectionLayerRef.current) map.removeLayer(popupSelectionLayerRef.current)
       popupSelectionLayerRef.current = null
       popupSelectionSourceRef.current = null
@@ -214,6 +276,142 @@ export function MapView(props: Props) {
       props.onMapReady?.(null)
     }
   }, [])
+
+  useEffect(() => {
+    const map = mapInstance
+    if (!map) return
+
+    const viewport = map.getViewport()
+    const closeContextMenu = () => {
+      setIsContextMenuOpen(false)
+      contextMenuCoordinateRef.current = null
+      contextMenuOverlayRef.current?.setPosition(undefined)
+      if (contextMenuRootRef.current) {
+        try {
+          contextMenuRootRef.current.unmount()
+        } catch {
+          // ignore
+        }
+        contextMenuRootRef.current = null
+      }
+    }
+
+    const closeLocationPopup = () => {
+      locationOverlayRef.current?.setPosition(undefined)
+      if (locationRootRef.current) {
+        try {
+          locationRootRef.current.unmount()
+        } catch {
+          // ignore
+        }
+        locationRootRef.current = null
+      }
+    }
+
+    const onIdentifyLocation = async () => {
+      const mapCoord = contextMenuCoordinateRef.current
+      closeContextMenu()
+      if (!mapCoord) return
+
+      // Convert clicked map coordinate (WebMercator) to WGS84 lon/lat
+      const [lon, lat] = toLonLat(mapCoord)
+
+      // Reverse geocode (best-effort)
+      let streetValue: string | undefined
+      let neighborhood: string | undefined
+      let postcode: string | undefined
+
+      try {
+        const result = await reverseGeocodeNominatim(lat, lon)
+        const addr = result?.address ?? {}
+
+        const road = addr.road || addr.pedestrian || addr.footway || addr.path || addr.highway
+        const houseNumber = addr.house_number
+        const composedStreet = [road, houseNumber].filter(Boolean).join(", ")
+        streetValue = composedStreet || result?.display_name || undefined
+
+        neighborhood =
+          addr.suburb ||
+          addr.neighbourhood ||
+          addr.city_district ||
+          addr.district ||
+          addr.quarter ||
+          undefined
+
+        postcode = addr.postcode || undefined
+      } catch {
+        // If reverse geocode fails, still show coordinates.
+      }
+
+      // TM-POA (EPSG:10665)
+      ensureProjectionsRegistered()
+      const [e, n] = transform([lon, lat], "EPSG:4326", "EPSG:10665") as [number, number]
+
+      locationOverlayRef.current?.setPosition(mapCoord)
+      if (locationElRef.current) {
+        if (!locationRootRef.current) {
+          locationRootRef.current = createRoot(locationElRef.current)
+        }
+
+        const googleMapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lon}`)}`
+        locationRootRef.current.render(
+          <MantineProvider>
+            <LocationPopup
+              onClose={closeLocationPopup}
+              streetValue={streetValue}
+              neighborhood={neighborhood}
+              postcode={postcode}
+              wgs84={{ lat, lon }}
+              tmpoa={{ e, n }}
+              googleMapsUrl={googleMapsUrl}
+            />
+          </MantineProvider>,
+        )
+      }
+    }
+
+    const onContextMenu = (evt: MouseEvent) => {
+      // Prevent browser context menu
+      evt.preventDefault()
+      evt.stopPropagation()
+
+      const pixel = map.getEventPixel(evt)
+      const coordinate = map.getCoordinateFromPixel(pixel)
+      if (!Array.isArray(coordinate) || coordinate.length < 2) return
+
+      const mapCoord: [number, number] = [Number(coordinate[0]), Number(coordinate[1])]
+      contextMenuCoordinateRef.current = mapCoord
+      contextMenuOverlayRef.current?.setPosition(mapCoord)
+      setIsContextMenuOpen(true)
+
+      if (!contextMenuElRef.current) return
+      if (!contextMenuRootRef.current) {
+        contextMenuRootRef.current = createRoot(contextMenuElRef.current)
+      }
+
+      contextMenuRootRef.current.render(
+        <MapContextMenu
+          onIdentifyLocation={onIdentifyLocation}
+          onClose={closeContextMenu}
+        />,
+      )
+    }
+
+    const onPointerDown = (evt: PointerEvent) => {
+      if (!isContextMenuOpen) return
+      const target = evt.target as Node | null
+      if (target && contextMenuElRef.current && contextMenuElRef.current.contains(target)) return
+      closeContextMenu()
+    }
+
+    viewport.addEventListener("contextmenu", onContextMenu)
+    viewport.addEventListener("pointerdown", onPointerDown)
+
+    return () => {
+      viewport.removeEventListener("contextmenu", onContextMenu)
+      viewport.removeEventListener("pointerdown", onPointerDown)
+    }
+  }, [mapInstance, isContextMenuOpen])
 
   useEffect(() => {
     const map = mapInstance
@@ -335,15 +533,17 @@ export function MapView(props: Props) {
       }
 
       popupRootRef.current.render(
-        <Popup
-          model={model}
-          onClose={closePopup}
-          onPrev={onPrev}
-          onNext={onNext}
-          canPrev={canPrev}
-          canNext={canNext}
-          positionLabel={`${safeIndex + 1} / ${hits.length}`}
-        />,
+		<MantineProvider>
+			<Popup
+				model={model}
+				onClose={closePopup}
+				onPrev={onPrev}
+				onNext={onNext}
+				canPrev={canPrev}
+				canNext={canNext}
+				positionLabel={`${safeIndex + 1} / ${hits.length}`}
+			/>
+		</MantineProvider>,
       )
 
       // Keep popup at the original click coordinate while navigating

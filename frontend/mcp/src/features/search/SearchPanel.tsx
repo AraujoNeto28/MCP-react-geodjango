@@ -6,7 +6,7 @@ import GeoJSON from "ol/format/GeoJSON"
 import { readGeoJsonFeaturesRobust } from "../../map/geojsonUtils"
 import { Button } from "../../components/ui/Button"
 import { Input } from "../../components/ui/Input"
-import { Select } from "../../components/ui/Select"
+import { SearchableSelect } from "../../components/ui/SearchableSelect"
 import { Label } from "../../components/ui/Label"
 import { Card } from "../../components/ui/Card"
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/Alert"
@@ -397,20 +397,18 @@ export function SearchPanel(props: Props) {
         <div className="space-y-6" ref={popoverRef}>
           <div className="space-y-2">
             <Label>Selecione a Camada</Label>
-            <Select
-              value={selectedLayerId}
-              onChange={(e) => {
-                setSelectedLayerId(e.target.value)
-                setOpenOperatorFor(null)
-              }}
-            >
-              <option value="">-- Selecione --</option>
-              {queryableLayers.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.title}
-                </option>
-              ))}
-            </Select>
+            <SearchableSelect
+				data={queryableLayers.map((l) => ({ value: l.id, label: l.title }))}
+				value={selectedLayerId || null}
+				onChange={(v) => {
+					setSelectedLayerId(v ?? "")
+					setOpenOperatorFor(null)
+				}}
+				placeholder="-- Selecione --"
+				searchable
+				clearable
+				nothingFoundMessage="Nenhuma camada"
+			/>
             {!queryableLayers.length && (
               <p className="text-xs text-zinc-500">Nenhuma camada marcada como queryable.</p>
             )}

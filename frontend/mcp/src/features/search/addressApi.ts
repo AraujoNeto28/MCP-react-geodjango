@@ -56,3 +56,25 @@ export async function searchAddressNominatim(query: string): Promise<AddressCand
     source: "nominatim",
   }))
 }
+
+export type NominatimReverseResult = {
+  place_id?: number
+  lat?: string
+  lon?: string
+  display_name?: string
+  address?: Record<string, string>
+}
+
+export async function reverseGeocodeNominatim(lat: number, lon: number): Promise<NominatimReverseResult> {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    format: "json",
+    addressdetails: "1",
+  })
+
+  const response = await fetch(`${env.apiBaseUrl}/search/nominatim/reverse/?${params.toString()}`)
+  if (!response.ok) throw new Error("Failed to reverse geocode with Nominatim")
+
+  return response.json()
+}

@@ -1,4 +1,10 @@
 import json
+import os
+import tempfile
+from pathlib import Path
+from typing import Iterable
+import datetime
+import warnings
 
 from django.db import transaction
 from django.http import HttpResponseNotAllowed, JsonResponse
@@ -17,12 +23,401 @@ from .geoserver import (
 from .models import Layer, RootGroup, ThematicGroup
 
 
+def _normalize_epsg(v: str | None) -> str | None:
+    if not v:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    if s.upper().startswith("EPSG:"):
+        return s.upper()
+    # allow "4326"
+    if s.isdigit():
+        return f"EPSG:{s}"
+    return s
+
+
+def _guess_crs_from_lonlat_bounds(bounds: list[float] | tuple[float, float, float, float] | None) -> str | None:
+    if not bounds or len(bounds) != 4:
+        return None
+    minx, miny, maxx, maxy = [float(x) for x in bounds]
+    # heuristic: looks like degrees
+    if -180 <= minx <= 180 and -180 <= maxx <= 180 and -90 <= miny <= 90 and -90 <= maxy <= 90:
+        return "EPSG:4326"
+    return None
+
+
+def _guess_crs_from_xy_bounds(bounds: list[float] | tuple[float, float, float, float] | None) -> str | None:
+    """Heuristics for common coordinate ranges.
+
+    This cannot reliably identify arbitrary projected CRSs, but it can distinguish the most common cases:
+    - lon/lat degrees -> EPSG:4326
+    """
+
+    epsg4326 = _guess_crs_from_lonlat_bounds(bounds)
+    if epsg4326:
+        return epsg4326
+
+    if not bounds or len(bounds) != 4:
+        return None
+    minx, miny, maxx, maxy = [float(x) for x in bounds]
+
+    return None
+
+
+def _as_geojson_dict(geojson_str: str):
+    try:
+        return json.loads(geojson_str)
+    except Exception:
+        return None
+
+
+def _json_default_for_geojson(obj):
+    """Fallback encoder for types that Python's json can't serialize.
+
+    This is intentionally permissive because real-world GIS files frequently contain
+    pandas/numpy scalar types and timestamps.
+    """
+
+    # datetime/date
+    if isinstance(obj, (datetime.datetime, datetime.date)):
+        return obj.isoformat()
+
+    # pandas Timestamp / NaT
+    try:
+        import pandas as pd
+
+        if isinstance(obj, pd.Timestamp):
+            try:
+                return obj.to_pydatetime().isoformat()
+            except Exception:
+                return obj.isoformat()
+    except Exception:
+        pass
+
+    # numpy scalars (including datetime64)
+    try:
+        import numpy as np
+
+        if isinstance(obj, np.datetime64):
+            try:
+                import pandas as pd
+
+                return pd.to_datetime(obj).to_pydatetime().isoformat()
+            except Exception:
+                return str(obj)
+
+        if isinstance(obj, np.generic):
+            return obj.item()
+    except Exception:
+        pass
+
+    # Decimal / UUID
+    try:
+        import decimal
+
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+    except Exception:
+        pass
+
+    try:
+        import uuid
+
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+    except Exception:
+        pass
+
+    return str(obj)
+
+
+def _gdf_to_geojson_dict(gdf):
+    """Convert a GeoDataFrame into a JSON-serializable GeoJSON dict.
+
+    Prefer __geo_interface__ with a permissive json default handler, because
+    GeoDataFrame.to_json() can fail on pandas.Timestamp in properties or ids.
+    """
+
+    try:
+        payload = getattr(gdf, "__geo_interface__", None)
+        if payload is not None:
+            txt = json.dumps(payload, ensure_ascii=False, default=_json_default_for_geojson)
+            return json.loads(txt)
+    except Exception:
+        pass
+
+    try:
+        return _as_geojson_dict(gdf.to_json())
+    except Exception:
+        return None
+
+
+def _find_first_present(d: dict, keys: Iterable[str]) -> str | None:
+    for k in keys:
+        if k in d and d[k] not in (None, ""):
+            return str(d[k])
+    return None
+
+
+def _detect_geojson_crs_from_payload(payload: dict) -> str | None:
+    # GeoJSON 'crs' member is deprecated but sometimes present.
+    crs = payload.get("crs")
+    if isinstance(crs, dict):
+        props = crs.get("properties")
+        if isinstance(props, dict):
+            name = props.get("name")
+            if isinstance(name, str) and name:
+                # common: "urn:ogc:def:crs:EPSG::4326"
+                upper = name.upper()
+                if "EPSG" in upper:
+                    digits = "".join(ch for ch in upper.split("EPSG")[-1] if ch.isdigit())
+                    if digits:
+                        return f"EPSG:{digits}"
+                return name
+    return None
+
+
+def _safe_error(exc: Exception) -> str:
+    # Keep errors reasonably readable without leaking internals.
+    msg = str(exc) or exc.__class__.__name__
+    return msg[:500]
+
+
+def _read_vector_file_to_gdf(
+    *,
+    input_path: str,
+    fmt: str,
+    source_crs_override: str | None = None,
+    csv_x: str | None = None,
+    csv_y: str | None = None,
+    csv_wkt: str | None = None,
+    gpkg_layer: str | None = None,
+):
+    import geopandas as gpd
+
+    fmt = fmt.lower()
+    if fmt in {"geojson", "json"}:
+        # Read as text first so we can try to detect embedded CRS if geopandas returns None.
+        payload = None
+        try:
+            with open(input_path, "rb") as f:
+                raw = f.read()
+            payload = json.loads(raw.decode("utf-8"))
+        except Exception:
+            payload = None
+
+        gdf = gpd.read_file(input_path)
+
+        if gdf.crs is None:
+            detected = _detect_geojson_crs_from_payload(payload) if isinstance(payload, dict) else None
+            detected = _normalize_epsg(detected)
+            if not detected:
+                # fallback heuristic
+                try:
+                    detected = _guess_crs_from_lonlat_bounds(getattr(gdf, "total_bounds", None))
+                except Exception:
+                    detected = None
+            if detected:
+                gdf = gdf.set_crs(detected, allow_override=True)
+
+        if source_crs_override:
+            gdf = gdf.set_crs(source_crs_override, allow_override=True)
+
+        return gdf
+
+    if fmt == "gpkg":
+        kwargs = {}
+        if gpkg_layer:
+            kwargs["layer"] = gpkg_layer
+        # pyogrio (GDAL/OGR) can emit noisy RuntimeWarning for some GeoPackages.
+        # Upload should still succeed, so we silence these warnings during read.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning, module=r"pyogrio(\..*)?$")
+            gdf = gpd.read_file(input_path, **kwargs)
+        if source_crs_override:
+            gdf = gdf.set_crs(source_crs_override, allow_override=True)
+        return gdf
+
+    if fmt == "shp":
+        gdf = gpd.read_file(input_path)
+        if source_crs_override:
+            gdf = gdf.set_crs(source_crs_override, allow_override=True)
+        return gdf
+
+    if fmt == "csv":
+        import pandas as pd
+        from shapely import wkt as shapely_wkt
+
+        df = pd.read_csv(input_path)
+
+        # Allow CRS embedded as a constant field.
+        cols_map = {c.lower(): c for c in df.columns}
+        embedded_crs_col = _find_first_present(cols_map, ["crs", "epsg", "srid", "srs"])
+        embedded_crs = None
+        if embedded_crs_col:
+            col = cols_map.get(str(embedded_crs_col).lower())
+            if col:
+                vals = df[col].dropna().astype(str)
+                if not vals.empty:
+                    embedded_crs = _normalize_epsg(vals.iloc[0])
+
+        crs = _normalize_epsg(source_crs_override) or embedded_crs
+
+        # Geometry creation: WKT preferred, else XY.
+        cols_lower = {c.lower(): c for c in df.columns}
+        auto_wkt = cols_lower.get("wkt") or cols_lower.get("geom") or cols_lower.get("geometry")
+
+        wkt_col = None
+        if csv_wkt and csv_wkt in df.columns:
+            wkt_col = csv_wkt
+        elif auto_wkt and auto_wkt in df.columns:
+            wkt_col = auto_wkt
+
+        if wkt_col:
+            geom = df[wkt_col].dropna().astype(str).map(shapely_wkt.loads)
+            gdf = gpd.GeoDataFrame(df, geometry=geom)
+        else:
+            x_col = (
+                (csv_x if csv_x and csv_x in df.columns else None)
+                or cols_lower.get("x")
+                or cols_lower.get("lon")
+                or cols_lower.get("lng")
+                or cols_lower.get("long")
+                or cols_lower.get("longitude")
+            )
+            y_col = (
+                (csv_y if csv_y and csv_y in df.columns else None)
+                or cols_lower.get("y")
+                or cols_lower.get("lat")
+                or cols_lower.get("latitude")
+            )
+
+            if not x_col or not y_col:
+                raise ValueError("CSV precisa ter colunas X e Y (ex: lon/lat ou x/y) ou uma coluna WKT (wkt/geom/geometry)")
+
+            gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df[x_col], df[y_col]))
+
+            if not crs:
+                # Heuristics based on ranges (only safe for lon/lat degrees)
+                try:
+                    bounds = [
+                        float(gdf.geometry.x.min()),
+                        float(gdf.geometry.y.min()),
+                        float(gdf.geometry.x.max()),
+                        float(gdf.geometry.y.max()),
+                    ]
+                    crs = _guess_crs_from_xy_bounds(bounds)
+                except Exception:
+                    crs = None
+
+            if not crs:
+                # If this is clearly *not* lon/lat degrees, we cannot infer the EPSG reliably from X/Y alone.
+                # Allow a server-side default CRS (no UI prompt) to support deployments where CSVs share a known CRS.
+                default_projected = os.environ.get("MCP_CSV_DEFAULT_PROJECTED_CRS")
+                crs = _normalize_epsg(default_projected)
+
+        if not crs:
+            raise ValueError(
+                "Não foi possível reconhecer a projeção do CSV apenas pelos campos X/Y. "
+                "Inclua uma coluna 'epsg'/'crs' (ex: 4326 ou EPSG:4326) ou configure um CRS padrão no servidor."
+            )
+
+        gdf = gdf.set_crs(crs, allow_override=True)
+        return gdf
+
+    raise ValueError("Formato não suportado")
+
+
 def tree_builder_view(request):
     return render(request, "layers_geoserver/tree_builder.html")
 
 
 def _json_error(message: str, status: int = 400):
     return JsonResponse({"error": message}, status=status)
+
+
+def _sanitize_gdf_for_geojson(gdf):
+    """Ensure feature properties are JSON-serializable.
+
+    Some drivers (notably GPKG via pandas/geopandas) may load date/time fields as pandas.Timestamp,
+    which can break GeoDataFrame.to_json() with: "Object of type Timestamp is not JSON serializable".
+    """
+
+    try:
+        import pandas as pd
+    except Exception:
+        return gdf
+
+    try:
+        # Work on a shallow copy to avoid mutating upstream and ensure index is JSON-safe.
+        out = gdf.copy()
+        try:
+            # GeoDataFrame.to_json can serialize the index as feature 'id'. If the index contains
+            # pandas.Timestamp (common when reading from some data sources), it will crash.
+            out = out.reset_index(drop=True)
+        except Exception:
+            pass
+
+        def conv(v):
+            if v is None:
+                return None
+            try:
+                if pd.isna(v):
+                    return None
+            except Exception:
+                pass
+
+            # Handle nested structures (some drivers load JSON-ish columns as python objects)
+            if isinstance(v, dict):
+                return {str(k): conv(val) for k, val in v.items()}
+            if isinstance(v, (list, tuple, set)):
+                t = [conv(x) for x in v]
+                return t if not isinstance(v, tuple) else tuple(t)
+
+            # pandas / python datetimes
+            if isinstance(v, pd.Timestamp):
+                try:
+                    return v.to_pydatetime().isoformat()
+                except Exception:
+                    return v.isoformat()
+            if isinstance(v, (datetime.datetime, datetime.date)):
+                return v.isoformat()
+
+            # numpy datetime64 inside object columns
+            try:
+                import numpy as np
+
+                if isinstance(v, np.datetime64):
+                    return pd.to_datetime(v).to_pydatetime().isoformat()
+            except Exception:
+                pass
+
+            return v
+
+        for col in list(getattr(out, "columns", [])):
+            if col == getattr(out, "geometry", None) or col == "geometry":
+                continue
+
+            s = out[col]
+            # datetime64[ns] / datetime64[ns, tz]
+            try:
+                if pd.api.types.is_datetime64_any_dtype(s):
+                    out[col] = s.map(conv)
+                    continue
+            except Exception:
+                pass
+
+            # object columns (including nested objects)
+            try:
+                if pd.api.types.is_object_dtype(s):
+                    out[col] = s.map(conv)
+            except Exception:
+                pass
+
+        return out
+    except Exception:
+        return gdf
 
 
 def _parse_json_body(request):
@@ -580,3 +975,182 @@ def geoserver_layer_suggest(request, workspace: str, layer_name: str):
         if msg == "Invalid field":
             return _json_error(msg, status=400)
         return _json_error(msg, status=502)
+
+
+@csrf_exempt
+def upload_user_layer(request):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    # Accept either a single 'file' or multiple 'files' (needed for Shapefile components)
+    files = []
+    if request.FILES.get("file"):
+        files = [request.FILES["file"]]
+    else:
+        files = list(request.FILES.getlist("files"))
+
+    if not files:
+        return _json_error("Nenhum arquivo enviado")
+
+    # Normalize parameters
+    layer_title = (request.POST.get("name") or "").strip() or None
+    if not layer_title:
+        return _json_error("O nome da camada é obrigatório", status=400)
+    # These optional overrides exist for API clients, but the UI does not request them.
+    source_crs_override = _normalize_epsg(request.POST.get("sourceCrs") or request.POST.get("source_crs"))
+    csv_x = request.POST.get("csvX")
+    csv_y = request.POST.get("csvY")
+    csv_wkt = request.POST.get("csvWkt")
+    gpkg_layer = request.POST.get("gpkgLayer")
+
+    # Determine format
+    exts = [Path(f.name).suffix.lower() for f in files]
+    fmt = None
+
+    if ".shp" in exts:
+        fmt = "shp"
+        required = {".shp", ".shx", ".dbf", ".prj"}
+        missing = required - set(exts)
+        if missing:
+            return _json_error(
+                "Shapefile requer os arquivos obrigatórios: .shp, .shx, .dbf, .prj (faltando: %s)" % ", ".join(sorted(missing))
+            )
+    elif any(e in {".geojson", ".json"} for e in exts):
+        fmt = "geojson"
+    elif ".gpkg" in exts:
+        fmt = "gpkg"
+    elif ".csv" in exts:
+        fmt = "csv"
+    else:
+        return _json_error("Formato não suportado. Use CSV, GeoJSON, Shapefile ou GPKG.")
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="upload_layer_") as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            main_path: Path | None = None
+            for f in files:
+                name = Path(f.name).name
+                out = tmpdir_path / name
+                with open(out, "wb") as w:
+                    for chunk in f.chunks():
+                        w.write(chunk)
+                if out.suffix.lower() in {".shp", ".geojson", ".json", ".csv", ".gpkg"}:
+                    main_path = out
+
+            if fmt == "shp":
+                # choose the .shp file as main
+                shp_files = [tmpdir_path / Path(f.name).name for f in files if Path(f.name).suffix.lower() == ".shp"]
+                main_path = shp_files[0] if shp_files else main_path
+
+            if not main_path or not main_path.exists():
+                return _json_error("Não foi possível localizar o arquivo principal do upload")
+
+            # If GeoPackage has multiple layers and the client didn't select one, return the list for selection.
+            if fmt == "gpkg" and not gpkg_layer:
+                layer_names: list[str] = []
+                try:
+                    try:
+                        import pyogrio
+
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings("ignore", category=RuntimeWarning, module=r"pyogrio(\..*)?$")
+                            layers_info = pyogrio.list_layers(str(main_path))
+                        # pyogrio returns a pandas DataFrame-like (or list) depending on version
+                        if hasattr(layers_info, "__iter__") and not isinstance(layers_info, (str, bytes)):
+                            # DataFrame: columns include 'name'
+                            if hasattr(layers_info, "get"):
+                                # DataFrame-like
+                                try:
+                                    names = layers_info["name"].tolist()  # type: ignore[index]
+                                    layer_names = [str(n) for n in names]
+                                except Exception:
+                                    pass
+                            if not layer_names:
+                                # list of tuples?
+                                try:
+                                    layer_names = [str(r[0]) for r in layers_info]  # type: ignore[index]
+                                except Exception:
+                                    layer_names = []
+                    except Exception:
+                        import fiona
+
+                        layer_names = [str(x) for x in fiona.listlayers(str(main_path))]
+                except Exception:
+                    layer_names = []
+
+                layer_names = [x for x in layer_names if x]
+                if len(layer_names) == 1:
+                    gpkg_layer = layer_names[0]
+                elif len(layer_names) > 1:
+                    return JsonResponse(
+                        {
+                            "error": "GeoPackage possui múltiplas camadas. Selecione qual deseja importar.",
+                            "needsLayerSelection": True,
+                            "layers": layer_names,
+                        },
+                        status=409,
+                    )
+
+            gdf = _read_vector_file_to_gdf(
+                input_path=str(main_path),
+                fmt=fmt,
+                source_crs_override=source_crs_override,
+                csv_x=csv_x,
+                csv_y=csv_y,
+                csv_wkt=csv_wkt,
+                gpkg_layer=gpkg_layer,
+            )
+
+            if getattr(gdf, "crs", None) is None:
+                return _json_error(
+                    "Não foi possível reconhecer a projeção. Para CSV, inclua uma coluna 'epsg'/'crs' (ex: 4326 ou EPSG:4326) ou inclua o EPSG no nome do arquivo (ex: *_EPSG4326.csv). Para pontos em lon/lat, use coordenadas em graus."
+                )
+
+            # Reproject to WGS84 for interchange with the frontend
+            source_crs_str = None
+            try:
+                source_crs_str = gdf.crs.to_string() if gdf.crs else None
+            except Exception:
+                source_crs_str = str(gdf.crs) if gdf.crs else None
+
+            source_epsg_str = None
+            try:
+                epsg = gdf.crs.to_epsg() if gdf.crs else None
+                if epsg:
+                    source_epsg_str = f"EPSG:{int(epsg)}"
+            except Exception:
+                source_epsg_str = None
+
+            try:
+                out_gdf = gdf.to_crs("EPSG:4326")
+            except Exception as exc:
+                return _json_error(f"Falha ao reprojetar para EPSG:4326: {_safe_error(exc)}")
+
+            try:
+                bbox = [float(x) for x in out_gdf.total_bounds]
+            except Exception:
+                bbox = None
+
+            safe_gdf = _sanitize_gdf_for_geojson(out_gdf)
+            geojson_dict = _gdf_to_geojson_dict(safe_gdf)
+            if not geojson_dict:
+                return _json_error("Falha ao gerar GeoJSON")
+
+            return JsonResponse(
+                {
+                    "name": layer_title,
+                    "format": fmt,
+                    "sourceCrs": source_crs_str,
+                    "sourceEpsg": source_epsg_str,
+                    "outputCrs": "EPSG:4326",
+                    "featureCount": int(len(out_gdf.index)),
+                    "bbox": bbox,
+                    "geojson": geojson_dict,
+                }
+            )
+
+    except ValueError as exc:
+        return _json_error(str(exc), status=400)
+    except Exception as exc:
+        return _json_error(_safe_error(exc), status=500)

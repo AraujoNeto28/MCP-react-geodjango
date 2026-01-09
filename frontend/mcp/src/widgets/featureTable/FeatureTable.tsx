@@ -246,6 +246,9 @@ export function FeatureTable(props: Props) {
     return Array.from(set)
   }, [features])
 
+  const hasInlineFeatures = Array.isArray(props.features)
+  const isWfsLayer = props.layer?.serviceType === "WFS"
+
   if (!props.open) return null
 
   const recordCount = features.length
@@ -596,11 +599,11 @@ export function FeatureTable(props: Props) {
       {!props.minimized && (
         <>
         <div className="min-h-0 flex-1 w-full overflow-auto">
-          {props.layer?.serviceType !== "WFS" && (
+          {!isWfsLayer && !hasInlineFeatures && (
             <div className="p-4 text-sm text-zinc-600">A tabela de atributos está disponível apenas para camadas WFS.</div>
           )}
 
-          {props.layer?.serviceType === "WFS" && (
+          {(isWfsLayer || hasInlineFeatures) && (
             <>
               {loading && features.length === 0 && (
                 <div className="p-4 text-sm text-zinc-600">Carregando feições...</div>

@@ -45,3 +45,24 @@ def nominatim_search(request):
         return JsonResponse(response.json(), safe=False)
     except requests.RequestException as e:
         return JsonResponse({'error': str(e)}, status=502)
+
+
+@require_http_methods(["GET"])
+def nominatim_reverse(request):
+    # Base URL for Nominatim reverse geocoding
+    base_url = "https://nominatim.openstreetmap.org/reverse"
+
+    params = request.GET.copy()
+    params["format"] = "json"
+    params.setdefault("addressdetails", "1")
+
+    headers = {
+        "User-Agent": "MCP-GeoServer-App/1.0",
+    }
+
+    try:
+        response = requests.get(base_url, params=params, headers=headers)
+        response.raise_for_status()
+        return JsonResponse(response.json(), safe=True)
+    except requests.RequestException as e:
+        return JsonResponse({"error": str(e)}, status=502)

@@ -3,3 +3,4 @@ psycopg>=3.0
 python-dotenv
 django-cors-headers
 requests
+geopandas>=0.14
