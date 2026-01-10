@@ -68,7 +68,7 @@
 
                         <div>
                             <label class="block text-xs font-medium text-gray-500 uppercase">Título da Árvore (ID)</label>
-                            <input type="text" v-model="root.id" placeholder="ex: infovia" class="w-full mt-1 border rounded p-2 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none">
+                            <input type="text" v-model="root.id" readonly title="Gerado automaticamente" placeholder="gerado automaticamente" class="w-full mt-1 border rounded p-2 text-sm font-mono bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
                         </div>
 
                         <div>
@@ -169,7 +169,7 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">ID Único</label>
-                                <input type="text" v-model="selectedLayer.id" class="w-full border rounded p-2 font-mono text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                <input type="text" v-model="selectedLayer.id" readonly title="Gerado automaticamente" class="w-full border rounded p-2 font-mono text-sm bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
                             </div>
 
                             <div>
@@ -480,13 +480,27 @@
                     filter: 'null',
                 });
 
+                const generateId = (prefix) => {
+                    try {
+                        // Prefer modern browser API
+                        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                            return `${prefix}-${crypto.randomUUID()}`;
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+
+                    // Fallback: timestamp + random
+                    const rand = Math.random().toString(16).slice(2);
+                    return `${prefix}-${Date.now().toString(16)}-${rand}`;
+                };
+
                 const root = reactive({
                     id: '',
                     title: '',
                     service_type: 'WFS',
                     workspace: '',
                     visible: true,
-                    order: 0,
                     layers: [],
                     thematic_groups: []
                 });
@@ -506,6 +520,9 @@
                     const rootId = urlParams.get('id');
                     if (rootId) {
                         await loadRootGroup(rootId);
+                    } else {
+                        // New root: generate an ID so user doesn't need to type.
+                        root.id = generateId('root');
                     }
                 });
 
@@ -524,7 +541,6 @@
                             root.service_type = found.serviceType;
                             root.workspace = found.workspace;
                             root.visible = found.visible;
-                            root.order = found.order;
                             
                             // Map Layers
                             root.layers = (found.layers || []).map(mapApiLayerToState);
@@ -535,7 +551,6 @@
                                 id: g.id,
                                 title: g.title,
                                 visible: g.visible,
-                                order: g.order,
                                 layers: (g.layers || []).map(mapApiLayerToState)
                             }));
 
@@ -550,14 +565,13 @@
 
                 const mapApiLayerToState = (l) => ({
                     tempId: Date.now() + Math.random(),
-                    id: l.id,
+                    id: l.id || generateId('layer'),
                     title: l.title,
                     layer_name: l.layerName,
                     workspace: l.workspace,
                     service_type: l.serviceType,
                     native_crs: l.nativeCrs,
                     visible: l.visible,
-                    order: l.order,
                     geometry_type: l.geometryType,
                     min_zoom: l.minZoom,
                     queryable: l.queryable,
@@ -889,14 +903,13 @@
 
                 const createLayer = () => ({
                     tempId: Date.now() + Math.random(),
-                    id: '',
+                    id: generateId('layer'),
                     title: 'Nova Camada',
                     layer_name: '',
                     workspace: root.workspace,
                     service_type: root.service_type,
                     native_crs: null,
                     visible: true,
-                    order: 0,
                     geometry_type: 'Point',
                     min_zoom: null,
                     queryable: true,
@@ -913,7 +926,6 @@
                         return;
                     }
                     const l = createLayer();
-                    l.order = root.layers.length;
                     root.layers.push(l);
                     selectLayer(l, 'root', root.layers.length - 1);
                 };
@@ -921,10 +933,9 @@
                 const addThematicGroup = () => {
                     root.thematic_groups.push({
                         tempId: Date.now() + Math.random(),
-                        id: '',
+                        id: generateId('group'),
                         title: 'Novo Grupo',
                         visible: true,
-                        order: root.thematic_groups.length,
                         layers: []
                     });
                 };
@@ -935,7 +946,6 @@
                         return;
                     }
                     const l = createLayer();
-                    l.order = root.thematic_groups[groupIndex].layers.length;
                     root.thematic_groups[groupIndex].layers.push(l);
                     selectLayer(l, 'group', root.thematic_groups[groupIndex].layers.length - 1, groupIndex);
                 };
@@ -1093,13 +1103,11 @@
                         service_type: root.service_type,
                         workspace: root.workspace,
                         visible: root.visible,
-                        order: root.order,
                         layers: root.layers.map(cleanLayer),
                         thematic_groups: root.thematic_groups.map(g => ({
                             id: g.id || g.title.toLowerCase().replace(/\s+/g, '-'),
                             title: g.title,
                             visible: g.visible,
-                            order: g.order,
                             layers: g.layers.map(cleanLayer)
                         }))
                     }];

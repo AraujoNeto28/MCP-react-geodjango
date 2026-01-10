@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import tempfile
 from pathlib import Path
@@ -436,7 +437,6 @@ def _serialize_root_group(rg: RootGroup):
         "serviceType": rg.service_type,
         "workspace": rg.workspace,
         "visible": rg.visible,
-        "order": rg.order,
     }
 
 
@@ -446,7 +446,6 @@ def _serialize_thematic_group(g: ThematicGroup):
         "rootGroupId": g.root_group_id,
         "title": g.title,
         "visible": g.visible,
-        "order": g.order,
     }
 
 
@@ -461,7 +460,6 @@ def _serialize_layer(layer: Layer):
         "serviceType": layer.service_type,
         "nativeCrs": layer.native_crs,
         "visible": layer.visible,
-        "order": layer.order,
         "geometryType": layer.geometry_type,
         "minZoom": layer.min_zoom,
         "queryable": layer.queryable,
@@ -471,6 +469,9 @@ def _serialize_layer(layer: Layer):
         "popupTemplate": layer.popup_template,
         "styleConfig": layer.style_config,
     }
+
+
+_SLUG_SAFE_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 
 
 @csrf_exempt
@@ -488,18 +489,31 @@ def save_tree(request):
 
     try:
         with transaction.atomic():
+            seen_root_ids: set[str] = set()
+            seen_group_ids: set[str] = set()
+            seen_layer_ids: set[str] = set()
+
             for root_data in data:
                 # Create or Update RootGroup
-                root_group, created = RootGroup.objects.update_or_create(
-                    id=root_data["id"],
-                    defaults={
-                        "title": root_data["title"],
-                        "service_type": root_data["service_type"],
-                        "workspace": root_data["workspace"],
-                        "visible": root_data["visible"],
-                        "order": root_data["order"],
-                    }
-                )
+                root_id = (root_data.get("id") or "").strip()
+                root_defaults = {
+                    "title": root_data["title"],
+                    "service_type": root_data["service_type"],
+                    "workspace": root_data["workspace"],
+                    "visible": root_data["visible"],
+                }
+
+                if root_id and root_id not in seen_root_ids and RootGroup.objects.filter(pk=root_id).exists():
+                    root_group, created = RootGroup.objects.update_or_create(
+                        id=root_id,
+                        defaults=root_defaults,
+                    )
+                else:
+                    root_group = RootGroup(**root_defaults)
+                    root_group.save()
+
+                if root_id:
+                    seen_root_ids.add(root_id)
                 
                 # Process Root Layers
                 # First, we might want to clear existing layers/groups if we want a full sync?
@@ -515,20 +529,73 @@ def save_tree(request):
                 # But let's stick to the safe update_or_create for now to avoid accidental data loss.
                 
                 for layer_data in root_data.get("layers", []):
-                    layer_id = layer_data.get("id")
-                    if not layer_id:
-                        layer_id = f"{root_group.id}_{layer_data['layer_name']}_{layer_data['order']}"
-                    
-                    Layer.objects.update_or_create(
-                        id=layer_id,
-                        defaults={
+                    layer_id = (layer_data.get("id") or "").strip()
+                    layer_defaults = {
+                        "title": layer_data["title"],
+                        "layer_name": layer_data["layer_name"],
+                        "workspace": layer_data["workspace"],
+                        "service_type": layer_data["service_type"],
+                        "native_crs": layer_data.get("native_crs"),
+                        "visible": layer_data["visible"],
+                        "geometry_type": layer_data["geometry_type"],
+                        "min_zoom": layer_data.get("min_zoom"),
+                        "queryable": layer_data["queryable"],
+                        "queryable_fields": layer_data.get("queryable_fields"),
+                        "table_fields": layer_data.get("table_fields"),
+                        "filter": layer_data.get("filter"),
+                        "popup_template": layer_data.get("popup_template"),
+                        "style_config": layer_data.get("style_config"),
+                        "root_group": root_group,
+                        "thematic_group": None,
+                    }
+
+                    can_update_layer = False
+                    if layer_id and layer_id not in seen_layer_ids:
+                        existing = Layer.objects.filter(pk=layer_id).select_related("root_group", "thematic_group").first()
+                        if existing and existing.root_group_id == root_group.id and existing.thematic_group_id is None:
+                            can_update_layer = True
+
+                    if can_update_layer:
+                        Layer.objects.update_or_create(id=layer_id, defaults=layer_defaults)
+                        seen_layer_ids.add(layer_id)
+                    else:
+                        layer = Layer(**layer_defaults)
+                        layer.save()
+
+                # Process Thematic Groups
+                for group_data in root_data.get("thematic_groups", []):
+                    group_id = (group_data.get("id") or "").strip()
+                    group_defaults = {
+                        "title": group_data["title"],
+                        "visible": group_data["visible"],
+                        "root_group": root_group,
+                    }
+
+                    can_update_group = False
+                    if group_id and group_id not in seen_group_ids:
+                        existing_group = ThematicGroup.objects.filter(pk=group_id).only("id", "root_group_id").first()
+                        if existing_group and existing_group.root_group_id == root_group.id:
+                            can_update_group = True
+
+                    if can_update_group:
+                        thematic_group, _ = ThematicGroup.objects.update_or_create(
+                            id=group_id,
+                            defaults=group_defaults,
+                        )
+                        seen_group_ids.add(group_id)
+                    else:
+                        thematic_group = ThematicGroup(**group_defaults)
+                        thematic_group.save()
+
+                    for layer_data in group_data.get("layers", []):
+                        layer_id = (layer_data.get("id") or "").strip()
+                        layer_defaults = {
                             "title": layer_data["title"],
                             "layer_name": layer_data["layer_name"],
                             "workspace": layer_data["workspace"],
                             "service_type": layer_data["service_type"],
                             "native_crs": layer_data.get("native_crs"),
                             "visible": layer_data["visible"],
-                            "order": layer_data["order"],
                             "geometry_type": layer_data["geometry_type"],
                             "min_zoom": layer_data.get("min_zoom"),
                             "queryable": layer_data["queryable"],
@@ -538,49 +605,25 @@ def save_tree(request):
                             "popup_template": layer_data.get("popup_template"),
                             "style_config": layer_data.get("style_config"),
                             "root_group": root_group,
-                            "thematic_group": None
+                            "thematic_group": thematic_group,
                         }
-                    )
 
-                # Process Thematic Groups
-                for group_data in root_data.get("thematic_groups", []):
-                    thematic_group, _ = ThematicGroup.objects.update_or_create(
-                        id=group_data["id"],
-                        defaults={
-                            "title": group_data["title"],
-                            "visible": group_data["visible"],
-                            "order": group_data["order"],
-                            "root_group": root_group
-                        }
-                    )
+                        can_update_layer = False
+                        if layer_id and layer_id not in seen_layer_ids:
+                            existing = Layer.objects.filter(pk=layer_id).select_related("root_group", "thematic_group").first()
+                            if (
+                                existing
+                                and existing.root_group_id == root_group.id
+                                and existing.thematic_group_id == thematic_group.id
+                            ):
+                                can_update_layer = True
 
-                    for layer_data in group_data.get("layers", []):
-                        layer_id = layer_data.get("id")
-                        if not layer_id:
-                            layer_id = f"{thematic_group.id}_{layer_data['layer_name']}_{layer_data['order']}"
-
-                        Layer.objects.update_or_create(
-                            id=layer_id,
-                            defaults={
-                                "title": layer_data["title"],
-                                "layer_name": layer_data["layer_name"],
-                                "workspace": layer_data["workspace"],
-                                "service_type": layer_data["service_type"],
-                                "native_crs": layer_data.get("native_crs"),
-                                "visible": layer_data["visible"],
-                                "order": layer_data["order"],
-                                "geometry_type": layer_data["geometry_type"],
-                                "min_zoom": layer_data.get("min_zoom"),
-                                "queryable": layer_data["queryable"],
-                                "queryable_fields": layer_data.get("queryable_fields"),
-                                "table_fields": layer_data.get("table_fields"),
-                                "filter": layer_data.get("filter"),
-                                "popup_template": layer_data.get("popup_template"),
-                                "style_config": layer_data.get("style_config"),
-                                "root_group": root_group,
-                                "thematic_group": thematic_group
-                            }
-                        )
+                        if can_update_layer:
+                            Layer.objects.update_or_create(id=layer_id, defaults=layer_defaults)
+                            seen_layer_ids.add(layer_id)
+                        else:
+                            layer = Layer(**layer_defaults)
+                            layer.save()
         return JsonResponse({"status": "success", "message": "Tree saved successfully"})
     except Exception as exc:
         return _json_error(str(exc), status=500)
@@ -591,12 +634,12 @@ def layers_tree(request):
     if request.method != "GET":
         return HttpResponseNotAllowed(["GET"])
 
-    roots = RootGroup.objects.all().order_by("order", "title")
+    roots = RootGroup.objects.all().order_by("title")
     result = []
 
     for rg in roots:
-        thematic_groups = rg.thematic_groups.all().order_by("order", "title")
-        direct_layers = rg.layers.filter(thematic_group__isnull=True).order_by("order", "title")
+        thematic_groups = rg.thematic_groups.all().order_by("title")
+        direct_layers = rg.layers.filter(thematic_group__isnull=True).order_by("title")
 
         result.append(
             {
@@ -605,7 +648,7 @@ def layers_tree(request):
                 "thematicGroups": [
                     {
                         **_serialize_thematic_group(g),
-                        "layers": [_serialize_layer(l) for l in g.layers.all().order_by("order", "title")],
+                        "layers": [_serialize_layer(l) for l in g.layers.all().order_by("title")],
                     }
                     for g in thematic_groups
                 ],
@@ -624,7 +667,7 @@ def _apply_fields(instance, data: dict, mapping: dict):
 @csrf_exempt
 def root_groups_collection(request):
     if request.method == "GET":
-        roots = RootGroup.objects.all().order_by("order", "title")
+        roots = RootGroup.objects.all().order_by("title")
         return JsonResponse([_serialize_root_group(r) for r in roots], safe=False)
 
     if request.method == "POST":
@@ -632,19 +675,19 @@ def root_groups_collection(request):
         if data is None:
             return _json_error("Invalid JSON")
 
-        required = ["id", "title", "serviceType", "workspace"]
+        required = ["title", "serviceType", "workspace"]
         missing = [k for k in required if k not in data]
         if missing:
             return _json_error(f"Missing fields: {', '.join(missing)}")
 
         rg = RootGroup(
-            id=data["id"],
             title=data["title"],
             service_type=data["serviceType"],
             workspace=data["workspace"],
             visible=bool(data.get("visible", True)),
-            order=int(data.get("order", 0)),
         )
+        if data.get("id"):
+            rg.id = data["id"]
         try:
             rg.full_clean()
             rg.save()
@@ -673,7 +716,6 @@ def root_group_detail(request, root_group_id: str):
             "serviceType": "service_type",
             "workspace": "workspace",
             "visible": "visible",
-            "order": "order",
         }
         _apply_fields(rg, data, mapping)
         try:
@@ -694,7 +736,7 @@ def root_group_detail(request, root_group_id: str):
 @csrf_exempt
 def thematic_groups_collection(request):
     if request.method == "GET":
-        groups = ThematicGroup.objects.select_related("root_group").all().order_by("root_group_id", "order", "title")
+        groups = ThematicGroup.objects.select_related("root_group").all().order_by("root_group_id", "title")
         return JsonResponse([_serialize_thematic_group(g) for g in groups], safe=False)
 
     if request.method == "POST":
@@ -702,19 +744,19 @@ def thematic_groups_collection(request):
         if data is None:
             return _json_error("Invalid JSON")
 
-        required = ["id", "rootGroupId", "title"]
+        required = ["rootGroupId", "title"]
         missing = [k for k in required if k not in data]
         if missing:
             return _json_error(f"Missing fields: {', '.join(missing)}")
 
         root = get_object_or_404(RootGroup, pk=data["rootGroupId"])
         g = ThematicGroup(
-            id=data["id"],
             root_group=root,
             title=data["title"],
             visible=bool(data.get("visible", True)),
-            order=int(data.get("order", 0)),
         )
+        if data.get("id"):
+            g.id = data["id"]
         try:
             g.full_clean()
             g.save()
@@ -741,7 +783,7 @@ def thematic_group_detail(request, thematic_group_id: str):
         if "rootGroupId" in data:
             g.root_group = get_object_or_404(RootGroup, pk=data["rootGroupId"])
 
-        mapping = {"title": "title", "visible": "visible", "order": "order"}
+        mapping = {"title": "title", "visible": "visible"}
         _apply_fields(g, data, mapping)
 
         try:
@@ -763,7 +805,7 @@ def thematic_group_detail(request, thematic_group_id: str):
 def layers_collection(request):
     if request.method == "GET":
         layers = Layer.objects.select_related("root_group", "thematic_group").all().order_by(
-            "root_group_id", "thematic_group_id", "order", "title"
+            "root_group_id", "thematic_group_id", "title"
         )
         return JsonResponse([_serialize_layer(l) for l in layers], safe=False)
 
@@ -772,7 +814,7 @@ def layers_collection(request):
         if data is None:
             return _json_error("Invalid JSON")
 
-        required = ["id", "rootGroupId", "title", "layerName", "geometryType"]
+        required = ["rootGroupId", "title", "layerName", "geometryType"]
         missing = [k for k in required if k not in data]
         if missing:
             return _json_error(f"Missing fields: {', '.join(missing)}")
@@ -783,7 +825,6 @@ def layers_collection(request):
             thematic = get_object_or_404(ThematicGroup, pk=data["thematicGroupId"])
 
         layer = Layer(
-            id=data["id"],
             root_group=root,
             thematic_group=thematic,
             title=data["title"],
@@ -792,7 +833,6 @@ def layers_collection(request):
             service_type=root.service_type,
             native_crs=data.get("nativeCrs"),
             visible=bool(data.get("visible", True)),
-            order=int(data.get("order", 0)),
             geometry_type=data["geometryType"],
             min_zoom=data.get("minZoom"),
             queryable=bool(data.get("queryable", False)),
@@ -802,6 +842,8 @@ def layers_collection(request):
             popup_template=data.get("popupTemplate"),
             style_config=data.get("styleConfig"),
         )
+        if data.get("id"):
+            layer.id = data["id"]
 
         # If not provided, try to fetch the CRS from GeoServer (best-effort).
         if not layer.native_crs:
@@ -848,7 +890,6 @@ def layer_detail(request, layer_id: str):
             "layerName": "layer_name",
             "nativeCrs": "native_crs",
             "visible": "visible",
-            "order": "order",
             "geometryType": "geometry_type",
             "minZoom": "min_zoom",
             "queryable": "queryable",

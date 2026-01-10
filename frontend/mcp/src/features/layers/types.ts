@@ -8,7 +8,6 @@ export type RootGroupDto = {
   serviceType: ServiceType
   workspace: string
   visible: boolean
-  order: number
   layers: LayerDto[]
   thematicGroups: ThematicGroupDto[]
 }
@@ -18,7 +17,6 @@ export type ThematicGroupDto = {
   rootGroupId: string
   title: string
   visible: boolean
-  order: number
   layers: LayerDto[]
 }
 
@@ -41,7 +39,6 @@ export type LayerDto = {
   serviceType: ServiceType
   nativeCrs?: string | null
   visible: boolean
-  order: number
   geometryType: GeometryType
   minZoom: number | null
   queryable: boolean

@@ -3,8 +3,10 @@ export type HttpError = {
   message: string
 }
 
+import { authFetch } from "../auth/authFetch"
+
 export async function httpGetJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(url, {
+  const resp = await authFetch(url, {
     ...init,
     method: "GET",
     headers: {

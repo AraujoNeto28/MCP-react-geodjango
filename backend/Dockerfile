@@ -3,6 +3,9 @@ FROM ubuntu:24.04
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Container timezone (affects logs and localtime)
+ENV TZ=America/Sao_Paulo
+
 # Install system dependencies
 # binutils, libproj-dev, gdal-bin are explicitly requested for GeoDjango
 # We also need python3 and build tools
@@ -16,7 +19,11 @@ RUN apt-get update && apt-get install -y \
     libgdal-dev \
     python3-dev \
     build-essential \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# Apply timezone
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1

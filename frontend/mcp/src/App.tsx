@@ -11,11 +11,14 @@ import "@mantine/spotlight/styles.css"
 import "@mantine/nprogress/styles.css"
 
 import { MantineProvider } from "@mantine/core"
+import { AuthProvider } from "./auth/AuthProvider"
 
 export default function App() {
   return (
     <MantineProvider>
-      <AppShellContainer />
+			<AuthProvider>
+				<AppShellContainer />
+			</AuthProvider>
     </MantineProvider>
   )
 }

@@ -31,4 +31,4 @@ else:
     print("Superuser env vars not set; skipping")
 PY
 
-exec python manage.py runserver 0.0.0.0:3001
+exec python manage.py runserver --nostatic 0.0.0.0:3001

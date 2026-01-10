@@ -1,4 +1,5 @@
 import { env } from "../../config/env"
+import { authFetch } from "../../auth/authFetch"
 
 export type AddressCandidate = {
   address: string
@@ -20,7 +21,7 @@ export async function searchAddressArcGIS(query: string): Promise<AddressCandida
   })
 
   // Use our backend proxy
-  const response = await fetch(`${env.apiBaseUrl}/search/arcgis/find/?${params.toString()}`)
+  const response = await authFetch(`${env.apiBaseUrl}/search/arcgis/find/?${params.toString()}`)
   if (!response.ok) throw new Error("Failed to fetch from ArcGIS")
   
   const data = await response.json()
@@ -44,7 +45,7 @@ export async function searchAddressNominatim(query: string): Promise<AddressCand
   })
 
   // Use our backend proxy
-  const response = await fetch(`${env.apiBaseUrl}/search/nominatim/search/?${params.toString()}`)
+  const response = await authFetch(`${env.apiBaseUrl}/search/nominatim/search/?${params.toString()}`)
   if (!response.ok) throw new Error("Failed to fetch from Nominatim")
 
   const data = await response.json()
@@ -73,7 +74,7 @@ export async function reverseGeocodeNominatim(lat: number, lon: number): Promise
     addressdetails: "1",
   })
 
-  const response = await fetch(`${env.apiBaseUrl}/search/nominatim/reverse/?${params.toString()}`)
+  const response = await authFetch(`${env.apiBaseUrl}/search/nominatim/reverse/?${params.toString()}`)
   if (!response.ok) throw new Error("Failed to reverse geocode with Nominatim")
 
   return response.json()

@@ -16,9 +16,11 @@ import type { UploadLayerResponse } from "../../features/upload/types"
 import type { BasemapId } from "../../features/basemaps/basemaps"
 import type { LayerVisibilityState } from "../../map/olLayerFactory"
 
-import { ActionIcon, AppShell as MantineAppShell, Box, Group, ScrollArea, Text } from "@mantine/core"
+import { ActionIcon, AppShell as MantineAppShell, Avatar, Box, Group, ScrollArea, Text } from "@mantine/core"
 
 import { AppNavLink } from "./AppNavLink"
+
+import { useAuth } from "../../auth/AuthContext"
 
 type SidebarView =
 	| "actions"
@@ -77,6 +79,10 @@ type AppNavbarProps = {
 }
 
 export function AppNavbar(props: AppNavbarProps) {
+	const auth = useAuth()
+	const username = auth.user.username ?? auth.user.name ?? ""
+	const avatarLetter = (auth.user.name ?? auth.user.username ?? "?").trim().slice(0, 1).toUpperCase() || "?"
+
 	const {
 		sidebarOpen,
 		onToggleSidebarOpen,
@@ -167,7 +173,7 @@ export function AppNavbar(props: AppNavbarProps) {
 						p="md"
 						style={{
 							backgroundImage:
-								"linear-gradient(90deg, var(--mantine-color-gray-9), var(--mantine-color-gray-7))",
+								"linear-gradient(90deg, var(--mantine-color-black), var(--mantine-color-gray-9))",
 							borderBottom: "1px solid rgba(255, 255, 255, 0.18)",
 						}}
 					>
@@ -176,6 +182,37 @@ export function AppNavbar(props: AppNavbarProps) {
 								<Text fw={700} truncate c="white">
 									Menu Principal
 								</Text>
+								<Group gap="xs" mt={6} wrap="nowrap">
+									<Avatar radius="xl" size={28} color="white" style={{border: "1px solid white"}}>
+										{avatarLetter}
+									</Avatar>
+									<Text size="md" c="white" opacity={0.9} truncate>
+										{username}
+									</Text>
+									<ActionIcon
+										variant="subtle"
+										size="sm"
+										title="Sair"
+										onClick={auth.logout}
+										style={{ color: "white", opacity: 0.95 }}
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											strokeWidth={2}
+											stroke="currentColor"
+											width="18"
+											height="18"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"
+										/>
+									</svg>
+									</ActionIcon>
+								</Group>
 							</div>
 
 							{sidebarView !== "actions" && (

@@ -93,6 +93,9 @@ function CheckboxRow(props: {
 export function LayerTree(props: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
+  const byTitle = (a: { title: string }, b: { title: string }) =>
+    a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" })
+
   const isExpanded = (id: string) => expanded[id] ?? false
   const toggleExpand = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !isExpanded(id) }))
 
@@ -104,7 +107,7 @@ export function LayerTree(props: Props) {
     <div className="space-y-6 p-4">
       {props.tree
         .slice()
-        .sort((a, b) => a.order - b.order)
+        .sort(byTitle)
         .map((root) => {
           const rootExpanded = isExpanded(root.id)
           const isUploadsRoot = root.id === "userUploads"
@@ -126,7 +129,7 @@ export function LayerTree(props: Props) {
                 <div className="space-y-1 pl-2 border-l-2 border-zinc-100 ml-2">
                   {root.layers
                     .slice()
-                    .sort((a, b) => a.order - b.order)
+                    .sort(byTitle)
                     .map((layer) => (
                       <CheckboxRow
                         key={layer.id}
@@ -153,7 +156,7 @@ export function LayerTree(props: Props) {
 
               {rootExpanded && root.thematicGroups
                 .slice()
-                .sort((a, b) => a.order - b.order)
+                .sort(byTitle)
                 .map((group) => {
                   const groupExpanded = isExpanded(group.id)
                   return (
@@ -170,7 +173,7 @@ export function LayerTree(props: Props) {
                         <div className="space-y-1 pl-4 border-l border-zinc-100 ml-1.5">
                           {group.layers
                             .slice()
-                            .sort((a, b) => a.order - b.order)
+                            .sort(byTitle)
                             .map((layer) => (
                               <CheckboxRow
                                 key={layer.id}

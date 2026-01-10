@@ -11,12 +11,12 @@ docker build -t geodjango-mcp-frontend .
 
 # Se o build der certo, roda o container
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "Iniciando frontend em http://localhost:5173 ..."
+    Write-Host "Iniciando frontend em http://localhost:80 ..."
     Write-Host "Proxy: /api -> host.docker.internal:3001"
 
     # Força host.docker.internal a resolver para o gateway IPv4 do host.
     # Evita tentativa de IPv6 (Network unreachable) e remove instabilidade no proxy.
-    docker run -d --name geodjango-mcp-frontend -p 5173:80 --add-host=host.docker.internal:host-gateway geodjango-mcp-frontend
+    docker run -d --name geodjango-mcp-frontend -p 80:80 --add-host=host.docker.internal:host-gateway geodjango-mcp-frontend
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Frontend iniciado. Logs: docker logs -f geodjango-mcp-frontend"

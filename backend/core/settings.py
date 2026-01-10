@@ -32,6 +32,20 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 
+# Keycloak (hardcoded per requirement)
+KEYCLOAK_URL = 'https://sso-pmpa-hom.procempa.com.br/auth'
+KEYCLOAK_REALM = 'pmpa'
+KEYCLOAK_CLIENT_ID = 'geoteste'
+REQUIRED_ROLE = 'mcp'
+
+# Allow small clock drift between this server and Keycloak.
+# Helps avoid intermittent "Token not yet valid (nbf/iat)".
+KEYCLOAK_CLOCK_SKEW_SECONDS = int(os.getenv('KEYCLOAK_CLOCK_SKEW_SECONDS', '60'))
+
+# Frontend URL (used by Django Admin "View site")
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:80')
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -41,6 +55,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'authentication.apps.AuthenticationConfig',
     'corsheaders',
     'django.contrib.gis',  # GeoDjango
     'layers_geoserver',
@@ -54,6 +69,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'authentication.middleware.KeycloakRequiredMiddleware',
+    'authentication.logging_middleware.RequestLogContextMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -120,7 +137,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Sao_Paulo'
 
 USE_I18N = True
 
@@ -155,3 +172,54 @@ if os.name == 'nt':
     # This is a placeholder. On Windows, you often need to set GDAL_LIBRARY_PATH
     # or ensure OSGeo4W is in the path as per the documentation provided.
     pass
+
+
+# Logging: include preferred_username (or Django username) in access logs.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'add_kc_user': {
+            '()': 'authentication.logging_filters.AddPreferredUsernameFilter',
+        },
+    },
+    'formatters': {
+        'django.server.with_user': {
+            '()': 'django.utils.log.ServerFormatter',
+            'format': '[{server_time}] ({kc_user}) {message}',
+            'style': '{',
+        },
+        'audit.with_user': {
+            'format': '[{asctime}] ({kc_user}) AUDIT {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'django.server': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+            'formatter': 'django.server.with_user',
+            'filters': ['add_kc_user'],
+        },
+        'audit': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'stream': 'ext://sys.stdout',
+            'formatter': 'audit.with_user',
+            'filters': ['add_kc_user'],
+        },
+    },
+    'loggers': {
+        'django.server': {
+            'handlers': ['django.server'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'mcp.audit': {
+            'handlers': ['audit'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

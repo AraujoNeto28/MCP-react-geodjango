@@ -1,4 +1,5 @@
 import type { UploadLayerResponse } from "./types"
+import { authFetch } from "../../auth/authFetch"
 
 export type UploadLayerParams = {
   name?: string
@@ -28,7 +29,7 @@ export async function uploadUserLayer(apiBaseUrl: string, files: File[], params?
   if (params?.name) form.set("name", params.name)
   if (params?.gpkgLayer) form.set("gpkgLayer", params.gpkgLayer)
 
-  const resp = await fetch(url, {
+  const resp = await authFetch(url, {
     method: "POST",
     body: form,
     signal,

@@ -1,0 +1,11 @@
+{% extends "admin/login.html" %}
+
+{% block content %}
+  {{ block.super }}
+
+  <div style="clear: both; padding-top: 20px; text-align: center;">
+    <a class="button" style="text-decoration: none; font-size: 16px;" href="{% url 'admin_keycloak_login' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}">
+      Login PMPA
+    </a>
+  </div>
+{% endblock %}

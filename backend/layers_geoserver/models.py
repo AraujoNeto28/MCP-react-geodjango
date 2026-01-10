@@ -1,5 +1,24 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+import uuid
+
+
+def _gen_prefixed_id(prefix: str) -> str:
+    # SlugField allows letters, numbers, underscores, and hyphens.
+    # Keep it short but collision-resistant.
+    return f"{prefix}-{uuid.uuid4().hex[:12]}"
+
+
+def generate_rootgroup_id() -> str:
+    return _gen_prefixed_id("root")
+
+
+def generate_thematicgroup_id() -> str:
+    return _gen_prefixed_id("group")
+
+
+def generate_layer_id() -> str:
+    return _gen_prefixed_id("layer")
 
 
 class ServiceType(models.TextChoices):
@@ -14,36 +33,34 @@ class GeometryType(models.TextChoices):
 
 
 class RootGroup(models.Model):
-    id = models.SlugField(primary_key=True, max_length=128)
+    id = models.SlugField(primary_key=True, max_length=128, default=generate_rootgroup_id)
     title = models.CharField(max_length=255)
     service_type = models.CharField(max_length=3, choices=ServiceType.choices)
     workspace = models.CharField(max_length=255)
     visible = models.BooleanField(default=True)
-    order = models.IntegerField(default=0)
 
     class Meta:
-        ordering = ["order", "title"]
+        ordering = ["title"]
 
     def __str__(self) -> str:
         return f"{self.title} ({self.service_type})"
 
 
 class ThematicGroup(models.Model):
-    id = models.SlugField(primary_key=True, max_length=128)
+    id = models.SlugField(primary_key=True, max_length=128, default=generate_thematicgroup_id)
     root_group = models.ForeignKey(RootGroup, on_delete=models.CASCADE, related_name="thematic_groups")
     title = models.CharField(max_length=255)
     visible = models.BooleanField(default=True)
-    order = models.IntegerField(default=0)
 
     class Meta:
-        ordering = ["order", "title"]
+        ordering = ["title"]
 
     def __str__(self) -> str:
         return f"{self.root_group_id} / {self.title}"
 
 
 class Layer(models.Model):
-    id = models.SlugField(primary_key=True, max_length=128)
+    id = models.SlugField(primary_key=True, max_length=128, default=generate_layer_id)
 
     root_group = models.ForeignKey(RootGroup, on_delete=models.CASCADE, related_name="layers")
     thematic_group = models.ForeignKey(
@@ -64,7 +81,6 @@ class Layer(models.Model):
     native_crs = models.CharField(max_length=32, null=True, blank=True)
 
     visible = models.BooleanField(default=True)
-    order = models.IntegerField(default=0)
 
     geometry_type = models.CharField(max_length=16, choices=GeometryType.choices)
     min_zoom = models.IntegerField(null=True, blank=True)
@@ -78,7 +94,7 @@ class Layer(models.Model):
     style_config = models.JSONField(null=True, blank=True)
 
     class Meta:
-        ordering = ["order", "title"]
+        ordering = ["title"]
 
     def clean(self):
         errors = {}
@@ -92,21 +108,6 @@ class Layer(models.Model):
 
         if self.service_type != self.root_group.service_type:
             errors["service_type"] = "Service type must match the root group service type."
-
-        # Check for duplicate order within the same group context
-        if self.root_group_id:
-            qs = Layer.objects.filter(root_group_id=self.root_group_id)
-            if self.thematic_group_id:
-                qs = qs.filter(thematic_group_id=self.thematic_group_id)
-            else:
-                qs = qs.filter(thematic_group__isnull=True)
-            
-            # Exclude self if updating
-            if self.pk:
-                qs = qs.exclude(pk=self.pk)
-            
-            if qs.filter(order=self.order).exists():
-                errors["order"] = f"A layer with order {self.order} already exists in this group."
 
         if errors:
             raise ValidationError(errors)

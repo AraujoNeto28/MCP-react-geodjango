@@ -40,12 +40,12 @@ function getCqlFilter(layer: LayerDto): string | undefined {
   return undefined
 }
 
-function createWmsLayer(geoserverBaseUrl: string, layer: LayerDto) {
+function createWmsLayer(geoserverBaseUrl: string, layer: LayerDto, zIndex: number) {
   const url = geoserverBaseUrl.replace(/\/$/, "") + "/wms"
   return new TileLayer({
     visible: layer.visible,
     minZoom: layer.minZoom ?? undefined,
-    zIndex: layer.order,
+    zIndex,
     source: new TileWMS({
       url,
       params: {
@@ -67,7 +67,7 @@ function createWmsLayer(geoserverBaseUrl: string, layer: LayerDto) {
   })
 }
 
-function createWfsLayer(geoserverBaseUrl: string, layer: LayerDto) {
+  function createWfsLayer(geoserverBaseUrl: string, layer: LayerDto, zIndex: number) {
   ensureProjectionsRegistered()
 
   const urlBase = geoserverBaseUrl.replace(/\/$/, "") + "/wfs"
@@ -250,7 +250,7 @@ function createWfsLayer(geoserverBaseUrl: string, layer: LayerDto) {
   return new VectorImageLayer({
     visible: layer.visible,
     minZoom: layer.minZoom ?? undefined,
-    zIndex: layer.order,
+    zIndex,
     source,
     style: createFeatureStyle(layer.styleConfig),
     properties: {
@@ -272,7 +272,11 @@ export function buildLayersFromTree(
   geoserverBaseUrl: string,
   availability?: GeoServerLayerAvailability,
 ) {
-  const rootGroups = tree.slice().sort((a, b) => a.order - b.order)
+  const rootGroups = tree
+    .slice()
+    .sort((a, b) => a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }))
+
+  let zIndexCounter = 1
 
   const isLayerAvailable = (layer: LayerDto) => {
     const byWorkspace = availability?.[layer.workspace]
@@ -287,7 +291,7 @@ export function buildLayersFromTree(
 
     const directLayers = root.layers
       .slice()
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }))
       .map((layer) => {
         const merged = { ...layer, visible: rootVisible && layer.visible }
 
@@ -299,20 +303,22 @@ export function buildLayersFromTree(
           return null
         }
 
+        const zIndex = zIndexCounter++
+
         return root.serviceType === "WMS"
-          ? createWmsLayer(geoserverBaseUrl, merged)
-          : createWfsLayer(geoserverBaseUrl, merged)
+          ? createWmsLayer(geoserverBaseUrl, merged, zIndex)
+          : createWfsLayer(geoserverBaseUrl, merged, zIndex)
       })
       .filter(Boolean)
 
     const thematicGroups = root.thematicGroups
       .slice()
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }))
       .map((group) => {
         const groupVisible = group.visible
         const layers = group.layers
           .slice()
-          .sort((a, b) => a.order - b.order)
+          .sort((a, b) => a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }))
           .map((layer) => {
             const merged = { ...layer, visible: rootVisible && groupVisible && layer.visible }
 
@@ -324,9 +330,11 @@ export function buildLayersFromTree(
               return null
             }
 
+            const zIndex = zIndexCounter++
+
             return root.serviceType === "WMS"
-              ? createWmsLayer(geoserverBaseUrl, merged)
-              : createWfsLayer(geoserverBaseUrl, merged)
+              ? createWmsLayer(geoserverBaseUrl, merged, zIndex)
+              : createWfsLayer(geoserverBaseUrl, merged, zIndex)
           })
           .filter(Boolean)
 

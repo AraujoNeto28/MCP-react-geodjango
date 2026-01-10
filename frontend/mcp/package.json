@@ -34,6 +34,7 @@
     "embla-carousel": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "jspdf": "^4.0.0",
+    "keycloak-js": "^26.2.2",
     "ol": "^10.7.0",
     "proj4": "^2.16.2",
     "react": "^19.2.0",

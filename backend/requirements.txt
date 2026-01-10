@@ -4,3 +4,5 @@ python-dotenv
 django-cors-headers
 requests
 geopandas>=0.14
+PyJWT[crypto]>=2.8
+PyJWT[crypto]>=2.8
