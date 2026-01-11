@@ -13,6 +13,8 @@ import { readGeoJsonFeaturesRobust } from "../../map/geojsonUtils"
 import { Button } from "../../components/ui/Button"
 import { Checkbox } from "../../components/ui/Checkbox"
 
+import { atributeTableHeaderColor } from "./constants"
+
 type Props = {
   map: Map | null
   layer: LayerDto | null
@@ -551,10 +553,12 @@ export function FeatureTable(props: Props) {
 
   return (
     <div className="flex h-full w-full flex-col border-t border-zinc-200 bg-white">
-      <div className="flex min-h-12 shrink-0 items-start justify-between border-b border-zinc-200 px-4 py-2 sm:h-12 sm:items-center sm:py-0">
+      <div
+        className={`flex min-h-12 shrink-0 items-start justify-between border-b border-zinc-200 px-4 py-2 text-white sm:h-12 sm:items-center sm:py-0 ${atributeTableHeaderColor}`}
+      >
         <div className="min-w-0 flex flex-col gap-0 sm:flex-row sm:items-center sm:gap-2">
-          <div className="text-xs font-semibold text-zinc-900 sm:text-sm">{props.headerTitle ?? "Tabela de atributos"}</div>
-          <div className="text-[11px] text-zinc-500 leading-tight break-words whitespace-normal sm:truncate sm:whitespace-nowrap sm:text-xs">
+          <div className="text-xs font-semibold sm:text-sm">{props.headerTitle ?? "Tabela de atributos"}</div>
+          <div className="text-[11px] text-white/85 leading-tight break-words whitespace-normal sm:truncate sm:whitespace-nowrap sm:text-xs">
             {layerTitle ? `(${layerTitle})` : ""}
             {props.headerContext ? ` ${props.headerContext}` : ""} ({recordCount} registros)
             {loading && " Carregando..."}
@@ -564,9 +568,24 @@ export function FeatureTable(props: Props) {
         <div className="flex items-center gap-1">
           {!props.minimized ? (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="h-8 w-8 text-zinc-600"
+              className="h-8 w-8"
+              radius={0}
+              styles={{
+                root: {
+                  padding: 0,
+                  width: 32,
+                  height: 32,
+                  minWidth: 32,
+                  backgroundColor: "#fff",
+                  borderRadius: 15,
+                  borderColor: "rgba(168, 168, 168, 0.9)",
+                  "&:hover": { backgroundColor: "rgba(14, 165, 233, 0.12)" },
+                  "&:active": { backgroundColor: "rgba(14, 165, 233, 0.18)" },
+                },
+                label: { color: "#0369a1" },
+              }}
               title="Minimizar"
               onClick={props.onMinimize}
             >
@@ -574,9 +593,24 @@ export function FeatureTable(props: Props) {
             </Button>
           ) : (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="h-8 w-8 text-zinc-600"
+              className="h-8 w-8"
+              radius={0}
+              styles={{
+                root: {
+                  padding: 0,
+                  width: 32,
+                  height: 32,
+                  minWidth: 32,
+                  backgroundColor: "#fff",
+                  borderRadius: 15,
+                  borderColor: "rgba(168, 168, 168, 0.9)",
+                  "&:hover": { backgroundColor: "rgba(14, 165, 233, 0.12)" },
+                  "&:active": { backgroundColor: "rgba(14, 165, 233, 0.18)" },
+                },
+                label: { color: "#0369a1" },
+              }}
               title="Maximizar"
               onClick={props.onMaximize}
             >
@@ -585,9 +619,24 @@ export function FeatureTable(props: Props) {
           )}
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="h-8 w-8 text-zinc-600 hover:text-red-600 hover:bg-red-50"
+            className="h-8 w-8"
+            radius={0}
+            styles={{
+              root: {
+                padding: 0,
+                width: 32,
+                height: 32,
+                minWidth: 32,
+                backgroundColor: "#fff",
+                borderRadius: 15,
+                borderColor: "rgba(168, 168, 168, 0.9)",
+                "&:hover": { backgroundColor: "rgba(239, 68, 68, 0.12)" },
+                "&:active": { backgroundColor: "rgba(239, 68, 68, 0.18)" },
+              },
+              label: { color: "#b91c1c" },
+            }}
             title="Fechar"
             onClick={props.onClose}
           >

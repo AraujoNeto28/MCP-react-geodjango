@@ -136,7 +136,7 @@ export function MapView(props: Props) {
         new ScaleLine({ units: "metric" }),
       ]),
       view: new View({
-        center: fromLonLat([-51.2177, -30.0346]),
+        center: fromLonLat([-51.1177, -30.0946]),
         zoom: 12,
       }),
     })

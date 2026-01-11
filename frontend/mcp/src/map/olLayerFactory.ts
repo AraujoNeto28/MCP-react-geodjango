@@ -1,11 +1,12 @@
 import TileLayer from "ol/layer/Tile"
-import VectorImageLayer from "ol/layer/VectorImage"
+import VectorLayer from "ol/layer/Vector"
 import LayerGroup from "ol/layer/Group"
 import OSM from "ol/source/OSM"
 import TileWMS from "ol/source/TileWMS"
 import VectorSource from "ol/source/Vector"
 import GeoJSON from "ol/format/GeoJSON"
 import { bbox as bboxStrategy } from "ol/loadingstrategy"
+import type { Extent } from "ol/extent"
 import { transformExtent } from "ol/proj"
 
 import type { RootGroupDto, LayerDto } from "../features/layers/types"
@@ -46,11 +47,16 @@ function createWmsLayer(geoserverBaseUrl: string, layer: LayerDto, zIndex: numbe
     visible: layer.visible,
     minZoom: layer.minZoom ?? undefined,
     zIndex,
+    // Avoid white/opaque tiles covering vector layers while panning/zooming.
+    // Some GeoServer setups default to non-transparent GetMap unless TRANSPARENT is set.
+    opacity: 1,
     source: new TileWMS({
       url,
       params: {
         LAYERS: `${layer.workspace}:${layer.layerName}`,
         TILED: true,
+        TRANSPARENT: true,
+        FORMAT: "image/png",
       },
       crossOrigin: "anonymous",
     }),
@@ -91,6 +97,12 @@ function createWmsLayer(geoserverBaseUrl: string, layer: LayerDto, zIndex: numbe
       let permanentlyDisabled = false
       let cooldownUntilMs = 0
       let lastLoggedErrorKey: string | null = null
+      // When using bboxStrategy, OL caches loaded extents and won't call the loader again for the
+      // same area. Since we intentionally keep ONLY the latest viewport features (source.clear),
+      // we must also forget *all* previously loaded extents, otherwise panning back to any prior
+      // area can show nothing.
+      const loadedExtents: Extent[] = []
+      let cooldownRefreshTimer: number | null = null
 
       class WfsHttpError extends Error {
         status: number
@@ -155,7 +167,24 @@ function createWmsLayer(geoserverBaseUrl: string, layer: LayerDto, zIndex: numbe
 
         const now = Date.now()
         if (cooldownUntilMs && now < cooldownUntilMs) {
-          success?.([])
+          // IMPORTANT: do not call success([]) here. That would cache this extent as "loaded"
+          // with zero features, and OL will not call the loader again when the user pans back.
+          failure?.()
+
+          // Best-effort: once cooldown expires, refresh so current viewport reloads.
+          if (cooldownRefreshTimer == null) {
+            const delay = Math.max(0, cooldownUntilMs - now + 50)
+            cooldownRefreshTimer = window.setTimeout(() => {
+              cooldownRefreshTimer = null
+              if (permanentlyDisabled) return
+              if (cooldownUntilMs && Date.now() < cooldownUntilMs) return
+              try {
+                source.refresh()
+              } catch {
+                // ignore
+              }
+            }, delay)
+          }
           return
         }
 
@@ -188,6 +217,20 @@ function createWmsLayer(geoserverBaseUrl: string, layer: LayerDto, zIndex: numbe
             }
 
             const features = parseFeatures(bodyText)
+            // Keep only the latest viewport data (we don't want feature accumulation), BUT also
+            // ensure OL will refetch when the user pans back to any previously loaded area.
+            if (loadedExtents.length) {
+              for (const e of loadedExtents) {
+                try {
+                  source.removeLoadedExtent(e)
+                } catch {
+                  // ignore
+                }
+              }
+              loadedExtents.length = 0
+            }
+            if (Array.isArray(extent)) loadedExtents.push(extent.slice() as any)
+
             // Keep only the latest viewport data. Without this, features accumulate as the user pans/zooms,
             // making interaction increasingly laggy.
             source.clear(true)
@@ -240,17 +283,19 @@ function createWmsLayer(geoserverBaseUrl: string, layer: LayerDto, zIndex: numbe
             }
 
             failure?.()
-            success?.([])
           }
         }, 500)
       }
     })(),
   })
 
-  return new VectorImageLayer({
+  return new VectorLayer({
     visible: layer.visible,
     minZoom: layer.minZoom ?? undefined,
     zIndex,
+    // Helps avoid stale image renders while the user is moving the view.
+    updateWhileAnimating: true,
+    updateWhileInteracting: true,
     source,
     style: createFeatureStyle(layer.styleConfig),
     properties: {

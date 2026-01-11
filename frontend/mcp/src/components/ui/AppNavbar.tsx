@@ -172,7 +172,7 @@ export function AppNavbar(props: AppNavbarProps) {
 					<Box
 						p="md"
 						style={{
-							backgroundColor: "#E61127",
+							background: "linear-gradient(90deg, #525252 0%, #017A73 100%)",
 							borderBottom: "1px solid rgba(255, 255, 255, 0.18)",
 						}}
 					>
@@ -589,7 +589,7 @@ export function AppNavbar(props: AppNavbarProps) {
 				</MantineAppShell.Section>
 
 				<MantineAppShell.Section>
-					<div className="border-t border-zinc-200 bg-[#FFE016] backdrop-blur px-5 py-4 min-h-[56px]">
+					<div className="border-t border-zinc-200 bg-[#C3C3C3] backdrop-blur px-5 py-4 min-h-[56px]">
 						<div className="flex items-center gap-2">
 							<div className="flex items-center gap-2 ml-auto">
 								<a href="https://prefeitura.poa.br" target="_blank" rel="noopener noreferrer">
