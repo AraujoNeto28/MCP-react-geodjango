@@ -112,6 +112,14 @@ DATABASES = {
     }
 }
 
+# Optional Postgres schema (e.g. "mcp"). If set, Django will use it as the
+# first schema in the search_path, while keeping "public" as fallback.
+DB_SCHEMA = (os.getenv('DB_SCHEMA') or '').strip()
+if DB_SCHEMA:
+    DATABASES['default'].setdefault('OPTIONS', {})
+    # Ensure our search_path takes precedence but still allows PostGIS/public extensions.
+    DATABASES['default']['OPTIONS']['options'] = f"-c search_path={DB_SCHEMA},public"
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

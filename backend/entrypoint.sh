@@ -1,6 +1,24 @@
 #!/usr/bin/env sh
 set -eu
 
+# If DB_SCHEMA is provided, ensure it exists before running migrations.
+python manage.py shell <<'PY'
+import os
+import re
+
+from django.db import connection
+
+schema = (os.environ.get("DB_SCHEMA") or "").strip()
+if not schema:
+    print("DB_SCHEMA not set; using default schema search_path")
+else:
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", schema):
+        raise SystemExit(f"Invalid DB_SCHEMA name: {schema!r}")
+    with connection.cursor() as cursor:
+        cursor.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+    print(f"Schema ensured: {schema}")
+PY
+
 python manage.py migrate --noinput
 
 # Optional: auto-create/update a Django superuser from env

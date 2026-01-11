@@ -27,6 +27,37 @@ _SAFE_FIELD_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _EPSG_RE = re.compile(r"(?i)(?:EPSG(?::|::)|epsg/|EPSG/0/)(\d{3,6})")
 
 
+def _infer_type_group_from_binding(binding: str | None) -> str:
+    t = (binding or "").lower()
+    if re.search(r"(date|time|timestamp)", t):
+        return "date"
+    if re.search(r"(int|integer|long|double|float|decimal|number|short)", t):
+        return "number"
+    return "string"
+
+
+def _resolve_field_name_and_type(workspace: str, layer_name: str, field: str) -> tuple[str, str]:
+    """Resolve the exact attribute name (case-sensitive) and its type group.
+
+    Many datasets expose attributes with upper-case names (e.g. OBJECTID) while
+    the UI may send lower-case (objectid). GeoServer WFS can error when
+    propertyName references a non-existent attribute.
+    """
+    attrs = get_layer_attributes(workspace, layer_name) or []
+    wanted = field.lower()
+
+    for a in attrs:
+        name = (a or {}).get("name")
+        if not isinstance(name, str) or not name:
+            continue
+        if name.lower() == wanted:
+            binding = (a or {}).get("type")
+            binding_str = binding if isinstance(binding, str) else None
+            return name, _infer_type_group_from_binding(binding_str)
+
+    raise GeoServerError("Invalid field")
+
+
 def _extract_epsg(value: Any) -> str | None:
     if not value:
         return None
@@ -323,6 +354,9 @@ def suggest_layer_field_values(
     if not field or not _SAFE_FIELD_RE.match(field):
         raise GeoServerError("Invalid field")
 
+    # Resolve real field name (case-sensitive) and type.
+    field, field_type = _resolve_field_name_and_type(workspace, layer_name, field)
+
     cfg = _get_config()
     base = cfg.base_url.rstrip("/")
     wfs_url = base + "/wfs"
@@ -333,7 +367,7 @@ def suggest_layer_field_values(
     cql = None
     if q is not None:
         q = (q or "").strip()
-    if q:
+    if q and field_type == "string":
         # Escape single quotes for CQL string literal
         q_esc = q.replace("'", "''")
         cql = f"{field} ILIKE '%{q_esc}%'"
@@ -350,13 +384,29 @@ def suggest_layer_field_values(
     if cql:
         params["cql_filter"] = cql
 
-    try:
-        resp = requests.get(wfs_url, params=params, auth=(cfg.user, cfg.password), timeout=20)
-    except requests.RequestException as exc:
-        raise GeoServerError(str(exc)) from exc
+    def _do_request(with_cql: bool) -> requests.Response:
+        p = dict(params)
+        if with_cql and cql:
+            p["cql_filter"] = cql
+        try:
+            return requests.get(wfs_url, params=p, auth=(cfg.user, cfg.password), timeout=20)
+        except requests.RequestException as exc:
+            raise GeoServerError(str(exc)) from exc
 
+    # First try with CQL (best performance) when we have a string filter.
+    # For number/date fields we avoid CQL here and filter client-side.
+    resp = _do_request(with_cql=True)
     if resp.status_code >= 400:
-        raise GeoServerError(f"GeoServer error {resp.status_code}: {resp.text[:500]}")
+        body = (resp.text or "")[:500]
+        if cql:
+            # Retry without cql_filter.
+            resp2 = _do_request(with_cql=False)
+            if resp2.status_code < 400:
+                resp = resp2
+            else:
+                raise GeoServerError(f"GeoServer error {resp.status_code}: {body}")
+        else:
+            raise GeoServerError(f"GeoServer error {resp.status_code}: {body}")
 
     try:
         data = resp.json()
@@ -375,6 +425,8 @@ def suggest_layer_field_values(
             continue
         s = str(v).strip()
         if not s:
+            continue
+        if q and q.lower() not in s.lower():
             continue
         if s in seen:
             continue

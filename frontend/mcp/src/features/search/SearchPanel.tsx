@@ -8,9 +8,10 @@ import { Button } from "../../components/ui/Button"
 import { Input } from "../../components/ui/Input"
 import { SearchableSelect } from "../../components/ui/SearchableSelect"
 import { Label } from "../../components/ui/Label"
-import { Card } from "../../components/ui/Card"
 import { Alert, AlertDescription, AlertTitle } from "../../components/ui/Alert"
 import { cn } from "../../lib/utils"
+
+import { Autocomplete, Menu } from "@mantine/core"
 
 type Props = {
   apiBaseUrl: string
@@ -72,17 +73,18 @@ function gearIcon(className?: string) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      viewBox="0 0 24 24"
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
       aria-hidden="true"
     >
-      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-      <path d="M19.4 15a7.9 7.9 0 0 0 .1-1l2-1.2-2-3.4-2.3.6a7.6 7.6 0 0 0-1.7-1l-.3-2.3H10.8l-.3 2.3a7.6 7.6 0 0 0-1.7 1L6.5 9.4l-2 3.4L6.5 14a7.9 7.9 0 0 0 .1 1 7.9 7.9 0 0 0-.1 1l-2 1.2 2 3.4 2.3-.6a7.6 7.6 0 0 0 1.7 1l.3 2.3h4.4l.3-2.3a7.6 7.6 0 0 0 1.7-1l2.3.6 2-3.4-2-1.2a7.9 7.9 0 0 0-.1-1Z" />
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065" />
+      <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
     </svg>
   )
 }
@@ -244,22 +246,9 @@ export function SearchPanel(props: Props) {
   const suggestControllersRef = useRef<Record<string, AbortController | null>>({})
 
   const [openOperatorFor, setOpenOperatorFor] = useState<string | null>(null)
-  const popoverRef = useRef<HTMLDivElement | null>(null)
 
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const onDocClick = (evt: MouseEvent) => {
-      const el = popoverRef.current
-      if (!el) return
-      if (evt.target instanceof Node && !el.contains(evt.target)) {
-        setOpenOperatorFor(null)
-      }
-    }
-    document.addEventListener("mousedown", onDocClick)
-    return () => document.removeEventListener("mousedown", onDocClick)
-  }, [])
 
   useEffect(() => {
     if (!selectedLayer) {
@@ -394,7 +383,7 @@ export function SearchPanel(props: Props) {
       )}
 
       {!props.loading && !props.error && (
-        <div className="space-y-6" ref={popoverRef}>
+        <div className="space-y-6">
           <div className="space-y-2">
             <Label>Selecione a Camada</Label>
             <SearchableSelect
@@ -434,8 +423,6 @@ export function SearchPanel(props: Props) {
                     const op = operators[f.name] ?? (f.typeGroup === "date" ? "on" : f.typeGroup === "number" ? "eq" : "contains")
                     const showNull = isNullishOperator(op)
                     const showBetween = isBetweenOperator(op)
-
-                    const datalistId = `suggest-${selectedLayer.id}-${f.name}`
                     const suggestions = suggestionsByField[f.name] ?? []
 
                     return (
@@ -452,33 +439,30 @@ export function SearchPanel(props: Props) {
                         <div className="relative flex items-stretch gap-2">
                           {!showNull && !showBetween && (
                             <div className="flex-1">
-                              <Input
+                              <Autocomplete
                                 placeholder={`Digite ${f.label.toLowerCase()}…`}
                                 value={values[f.name] ?? ""}
-                                list={datalistId}
-                                onChange={(e) => {
-                                  const v = e.target.value
+                                data={suggestions}
+                                limit={10}
+                                comboboxProps={{ withinPortal: true, zIndex: 3000 }}
+                                onChange={(v) => {
                                   setValues((s) => ({ ...s, [f.name]: v }))
                                   requestSuggestions(f.name, v)
                                 }}
                               />
-                              <datalist id={datalistId}>
-                                {suggestions.map((sug) => (
-                                  <option key={sug} value={sug} />
-                                ))}
-                              </datalist>
                             </div>
                           )}
 
                           {!showNull && showBetween && (
                             <div className="flex w-full gap-2">
-                              <Input
+                              <Autocomplete
                                 className="w-1/2"
                                 placeholder="De…"
                                 value={values[f.name] ?? ""}
-                                list={datalistId}
-                                onChange={(e) => {
-                                  const v = e.target.value
+                                data={suggestions}
+                                limit={10}
+                                comboboxProps={{ withinPortal: true, zIndex: 3000 }}
+                                onChange={(v) => {
                                   setValues((s) => ({ ...s, [f.name]: v }))
                                   requestSuggestions(f.name, v)
                                 }}
@@ -489,11 +473,6 @@ export function SearchPanel(props: Props) {
                                 value={values2[f.name] ?? ""}
                                 onChange={(e) => setValues2((s) => ({ ...s, [f.name]: e.target.value }))}
                               />
-                              <datalist id={datalistId}>
-                                {suggestions.map((sug) => (
-                                  <option key={sug} value={sug} />
-                                ))}
-                              </datalist>
                             </div>
                           )}
 
@@ -503,18 +482,34 @@ export function SearchPanel(props: Props) {
                             </div>
                           )}
 
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="shrink-0"
-                            title="Operador"
-                            onClick={() => setOpenOperatorFor((cur) => (cur === f.name ? null : f.name))}
+                          <Menu
+                            opened={openOperatorFor === f.name}
+                            onChange={(opened) => setOpenOperatorFor(opened ? f.name : null)}
+                            position="bottom-end"
+                            withinPortal
+                            zIndex={4000}
+                            shadow="md"
+                            width={240}
                           >
-                            {gearIcon("h-4 w-4")}
-                          </Button>
+                            <Menu.Target>
+                              <span>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="shrink-0"
+                                  w={32}
+                                  h={32}
+                                  p={0}
+                                  miw={32}
+                                  title="Operador"
+                                  onClick={() => setOpenOperatorFor((cur) => (cur === f.name ? null : f.name))}
+                                >
+                                  {gearIcon("h-4 w-4")}
+                                </Button>
+                              </span>
+                            </Menu.Target>
 
-                          {openOperatorFor === f.name && (
-                            <Card className="absolute right-0 top-full z-10 mt-2 w-56 overflow-hidden p-0 shadow-lg">
+                            <Menu.Dropdown p={0}>
                               <div className="max-h-64 overflow-auto py-1">
                                 {operatorsFor(f.typeGroup).map((o) => (
                                   <button
@@ -533,8 +528,8 @@ export function SearchPanel(props: Props) {
                                   </button>
                                 ))}
                               </div>
-                            </Card>
-                          )}
+                            </Menu.Dropdown>
+                          </Menu>
                         </div>
                       </div>
                     )

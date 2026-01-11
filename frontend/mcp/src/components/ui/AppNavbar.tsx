@@ -16,7 +16,7 @@ import type { UploadLayerResponse } from "../../features/upload/types"
 import type { BasemapId } from "../../features/basemaps/basemaps"
 import type { LayerVisibilityState } from "../../map/olLayerFactory"
 
-import { ActionIcon, AppShell as MantineAppShell, Avatar, Box, Group, ScrollArea, Text } from "@mantine/core"
+import { ActionIcon, AppShell as MantineAppShell, Avatar, Box, Group, Text } from "@mantine/core"
 
 import { AppNavLink } from "./AppNavLink"
 
@@ -167,13 +167,12 @@ export function AppNavbar(props: AppNavbarProps) {
 
 	return (
 		<MantineAppShell.Navbar>
-			<Box style={{ position: "relative", height: "100%" }}>
+			<Box style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }}>
 				<MantineAppShell.Section>
 					<Box
 						p="md"
 						style={{
-							backgroundImage:
-								"linear-gradient(90deg, var(--mantine-color-black), var(--mantine-color-gray-9))",
+							backgroundColor: "#E61127",
 							borderBottom: "1px solid rgba(255, 255, 255, 0.18)",
 						}}
 					>
@@ -202,8 +201,8 @@ export function AppNavbar(props: AppNavbarProps) {
 											viewBox="0 0 24 24"
 											strokeWidth={2}
 											stroke="currentColor"
-											width="18"
-											height="18"
+											width="32"
+											height="32"
 										>
 											<path
 												strokeLinecap="round"
@@ -243,10 +242,17 @@ export function AppNavbar(props: AppNavbarProps) {
 					</Box>
 				</MantineAppShell.Section>
 
-				<MantineAppShell.Section grow component={ScrollArea}>
-					<div className="min-h-0 flex-1 overflow-auto bg-zinc-50/50">
+				<MantineAppShell.Section
+					grow
+					style={{ minHeight: 0 }}
+				>
+					<div
+						className="bg-zinc-50/50"
+						style={{ height: "100%", overflowY: "auto" }}
+						onWheelCapture={(e) => e.stopPropagation()}
+					>
 					{sidebarView === "actions" && (
-						<div className="p-4 space-y-3">
+						<div className="p-3 space-y-2">
 							<AppNavLink
 								title="Camadas"
 								description="Gerenciar visibilidade"
@@ -259,7 +265,7 @@ export function AppNavbar(props: AppNavbarProps) {
 										viewBox="0 0 24 24"
 										strokeWidth={2}
 										stroke="currentColor"
-										className="h-5 w-5"
+										className="h-4 w-4"
 									>
 										<path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
 									</svg>
@@ -278,7 +284,7 @@ export function AppNavbar(props: AppNavbarProps) {
 										viewBox="0 0 24 24"
 										strokeWidth={2}
 										stroke="currentColor"
-										className="h-5 w-5"
+										className="h-4 w-4"
 									>
 										<path
 											strokeLinecap="round"
@@ -301,7 +307,7 @@ export function AppNavbar(props: AppNavbarProps) {
 										viewBox="0 0 24 24"
 										strokeWidth={2}
 										stroke="currentColor"
-										className="h-5 w-5"
+										className="h-4 w-4"
 									>
 										<path
 											strokeLinecap="round"
@@ -326,7 +332,7 @@ export function AppNavbar(props: AppNavbarProps) {
 										strokeWidth={2}
 										strokeLinecap="round"
 										strokeLinejoin="round"
-										className="h-5 w-5"
+										className="h-4 w-4"
 									>
 										<path d="M12 3v12" />
 										<path d="M7 8l5-5 5 5" />
@@ -347,7 +353,7 @@ export function AppNavbar(props: AppNavbarProps) {
 										viewBox="0 0 24 24"
 										strokeWidth={2}
 										stroke="currentColor"
-										className="h-5 w-5"
+										className="h-4 w-4"
 									>
 										<path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
 										<path
@@ -371,7 +377,7 @@ export function AppNavbar(props: AppNavbarProps) {
 										viewBox="0 0 24 24"
 										strokeWidth={2}
 										stroke="currentColor"
-										className="h-5 w-5"
+										className="h-4 w-4"
 									>
 										<path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
 										<path
@@ -395,7 +401,7 @@ export function AppNavbar(props: AppNavbarProps) {
 										viewBox="0 0 24 24"
 										strokeWidth={2}
 										stroke="currentColor"
-										className="h-5 w-5"
+										className="h-4 w-4"
 									>
 										<path
 											strokeLinecap="round"
@@ -420,7 +426,7 @@ export function AppNavbar(props: AppNavbarProps) {
 										strokeWidth={2}
 										strokeLinecap="round"
 										strokeLinejoin="round"
-										className="h-5 w-5"
+										className="h-4 w-4"
 									>
 										<path d="M6 9V2h12v7" />
 										<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
@@ -582,23 +588,54 @@ export function AppNavbar(props: AppNavbarProps) {
 					</div>
 				</MantineAppShell.Section>
 
+				<MantineAppShell.Section>
+					<div className="border-t border-zinc-200 bg-[#FFE016] backdrop-blur px-5 py-4 min-h-[56px]">
+						<div className="flex items-center gap-2">
+							<div className="flex items-center gap-2 ml-auto">
+								<a href="https://prefeitura.poa.br" target="_blank" rel="noopener noreferrer">
+									<img
+										src="/brasao_prefeitura.png"
+										alt="Prefeitura de Porto Alegre"
+										className="h-[32px] md:h-[32px] w-auto object-contain"
+										draggable={false}
+										loading="lazy"
+									/>
+								</a>
+
+								<a href="https://prefeitura.poa.br/procempa" target="_blank" rel="noopener noreferrer">
+									<img
+										src="https://www.procempa.com.br/img/desenvolvimento_procempa.svg"
+										alt="Desenvolvido pela Procempa"
+										className="h-[14px] md:h-[16px] w-auto filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]"
+										draggable={false}
+										loading="lazy"
+									/>
+								</a>
+							</div>
+						</div>
+					</div>
+				</MantineAppShell.Section>
+
 				{sidebarOpen && (
 					<ActionIcon
 						variant="default"
-						size="lg"
-						radius="xl"
+						size="input-xs"
+						radius="md"
 						visibleFrom="sm"
 						onClick={onToggleSidebarOpen}
 						title="Esconder menu"
 						style={{
 							position: "absolute",
 							top: "50%",
-							right: -18,
+							right: -29,
 							transform: "translateY(-50%)",
 							zIndex: 10,
+							borderTopLeftRadius: 0,
+							borderBottomLeftRadius: 0,
+							width: 15,
 						}}
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+						<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 0 20 20" fill="currentColor" width="23" height="25">
 							<path
 								fillRule="evenodd"
 								d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z"

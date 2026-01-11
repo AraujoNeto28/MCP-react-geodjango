@@ -11,7 +11,7 @@ export function AppHeader(props: AppHeaderProps) {
 	return (
 		<MantineAppShell.Header
 			style={{
-				backgroundImage: "linear-gradient(90deg, var(--mantine-color-blue-9), var(--mantine-color-indigo-9))",
+				backgroundColor: "#017A73",
 				borderBottom: "1px solid rgba(255, 255, 255, 0.18)",
 			}}
 		>

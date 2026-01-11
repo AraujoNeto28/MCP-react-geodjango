@@ -1,7 +1,7 @@
-# Generated manually for this workspace
-
 from django.db import migrations, models
 import django.db.models.deletion
+
+import layers_geoserver.models
 
 
 class Migration(migrations.Migration):
@@ -13,7 +13,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="RootGroup",
             fields=[
-                ("id", models.SlugField(max_length=128, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.SlugField(
+                        default=layers_geoserver.models.generate_rootgroup_id,
+                        max_length=128,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
                 ("title", models.CharField(max_length=255)),
                 (
                     "service_type",
@@ -21,17 +29,23 @@ class Migration(migrations.Migration):
                 ),
                 ("workspace", models.CharField(max_length=255)),
                 ("visible", models.BooleanField(default=True)),
-                ("order", models.IntegerField(default=0)),
             ],
-            options={"ordering": ["order", "title"]},
+            options={"ordering": ["title"]},
         ),
         migrations.CreateModel(
             name="ThematicGroup",
             fields=[
-                ("id", models.SlugField(max_length=128, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.SlugField(
+                        default=layers_geoserver.models.generate_thematicgroup_id,
+                        max_length=128,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
                 ("title", models.CharField(max_length=255)),
                 ("visible", models.BooleanField(default=True)),
-                ("order", models.IntegerField(default=0)),
                 (
                     "root_group",
                     models.ForeignKey(
@@ -41,12 +55,20 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"ordering": ["order", "title"]},
+            options={"ordering": ["title"]},
         ),
         migrations.CreateModel(
             name="Layer",
             fields=[
-                ("id", models.SlugField(max_length=128, primary_key=True, serialize=False)),
+                (
+                    "id",
+                    models.SlugField(
+                        default=layers_geoserver.models.generate_layer_id,
+                        max_length=128,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
                 ("title", models.CharField(max_length=255)),
                 ("layer_name", models.CharField(max_length=255)),
                 ("workspace", models.CharField(max_length=255)),
@@ -54,8 +76,8 @@ class Migration(migrations.Migration):
                     "service_type",
                     models.CharField(choices=[("WFS", "WFS"), ("WMS", "WMS")], max_length=3),
                 ),
+                ("native_crs", models.CharField(blank=True, max_length=32, null=True)),
                 ("visible", models.BooleanField(default=True)),
-                ("order", models.IntegerField(default=0)),
                 (
                     "geometry_type",
                     models.CharField(
@@ -89,6 +111,6 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"ordering": ["order", "title"]},
+            options={"ordering": ["title"]},
         ),
     ]

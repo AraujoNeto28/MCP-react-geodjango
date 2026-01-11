@@ -6,7 +6,8 @@ export type SearchableSelectProps = Omit<MantineSelectProps, "onChange"> & {
 	onChange?: (value: string | null) => void
 }
 
-const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProps>(({ onChange, styles, ...props }, ref) => {
+const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProps>(
+	({ onChange, styles, comboboxProps, ...props }, ref) => {
 	const wrapOptionStyles = {
 		option: {
 			whiteSpace: "normal",
@@ -44,8 +45,23 @@ const SearchableSelect = React.forwardRef<HTMLInputElement, SearchableSelectProp
 				},
 			}
 
-	return <MantineSelect ref={ref} onChange={onChange} styles={mergedStyles as any} {...props} />
-})
+	const mergedComboboxProps = {
+		withinPortal: true,
+		zIndex: 3000,
+		...(comboboxProps as any),
+	}
+
+	return (
+		<MantineSelect
+			ref={ref}
+			onChange={onChange}
+			styles={mergedStyles as any}
+			comboboxProps={mergedComboboxProps as any}
+			{...props}
+		/>
+	)
+},
+)
 
 SearchableSelect.displayName = "SearchableSelect"
 

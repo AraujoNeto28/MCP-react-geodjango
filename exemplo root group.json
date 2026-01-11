@@ -1,0 +1,1798 @@
+[
+  {
+    "title": "INFOVIA",
+    "service_type": "WFS",
+    "workspace": "infovia_post",
+    "visible": true,
+    "layers": [
+      {
+        "title": "POP",
+        "layer_name": "pop",
+        "workspace": "infovia_post",
+        "service_type": "WFS",
+        "native_crs": "EPSG:10665",
+        "visible": true,
+        "geometry_type": "Point",
+        "min_zoom": 10,
+        "queryable": true,
+        "queryable_fields": [
+          {
+            "name": "nome",
+            "label": "nome"
+          },
+          {
+            "name": "endereco",
+            "label": "Endereço"
+          },
+          {
+            "name": "layer",
+            "label": "Layer"
+          }
+        ],
+        "table_fields": [
+          {
+            "name": "nome",
+            "label": "nome"
+          },
+          {
+            "name": "endereco",
+            "label": "Endereço"
+          }
+        ],
+        "filter": null,
+        "popup_template": {
+          "title": "{nome}",
+          "fields": [
+            {
+              "field": "nome",
+              "label": "nome"
+            },
+            {
+              "field": "endereco",
+              "label": "Endereço"
+            },
+            {
+              "field": "layer",
+              "label": "Layer"
+            },
+            {
+              "field": "x",
+              "label": "X"
+            },
+            {
+              "field": "y",
+              "label": "Y"
+            }
+          ]
+        },
+        "style_config": {
+          "type": "Point",
+          "label": {
+            "font": "11px Noto Sans Regular",
+            "color": "#282828",
+            "field": "nome",
+            "offsetY": -13,
+            "haloColor": "#ffffff",
+            "haloWidth": 3
+          },
+          "radius": 8,
+          "fillColor": "#ff3300",
+          "strokeColor": "#000000",
+          "strokeWidth": 0.5
+        }
+      }
+    ],
+    "thematic_groups": [
+      {
+        "title": "Cabos de Fibra Ótica Aéreos Procempa",
+        "visible": true,
+        "layers": [
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Com_04_Fibras_oticas",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Com_04_Fibras_oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Com_06_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Com_06_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Com_06_Fibras_Oticas_DGT",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Com_06_Fibras_Oticas_DGT",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Com_08_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Com_08_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Com_24_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Com_24_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Com_36_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Com_36_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Com_48_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Com_48_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Com_72_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Com_72_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_aereos_Procempa_Sem_quantidade_definida_de_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_aereos_Procempa_Sem_quantidade_definida_de_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ff00ff",
+              "strokeWidth": 2
+            }
+          }
+        ]
+      },
+      {
+        "title": "Cabos de Fibra Ótica de Terceiros",
+        "visible": true,
+        "layers": [
+          {
+            "title": "CEEE - 4 Fibras Óticas Procempa",
+            "layer_name": "Cabos_de_fibra_otica_de_terceiros_CEEE_4_Fibras_Oticas_Procempa",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#0084a8",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "COMEP",
+            "layer_name": "Cabos_de_fibra_otica_de_terceiros_COMEP",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffff00",
+              "strokeWidth": 2
+            }
+          }
+        ]
+      },
+      {
+        "title": "Cabos de Fibra Ótica Subterrâneos Procempa",
+        "visible": true,
+        "layers": [
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_04_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_04_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_06_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_06_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_12_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_12_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_12_Fibras_Oticas_Dacao_Interlig",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_12_Fibras_Oticas_Dacao_Interlig",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_24_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_24_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_36_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_36_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_48_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_48_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_48_Fibras_Oticas_no_duto_AT_T",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_48_Fibras_Oticas_no_duto_AT_T",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_72_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Com_72_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          },
+          {
+            "title": "Cabos_de_fibra_otica_subterraneos_Procempa_Sem_quantidade_definida_de_Fibras_Oticas",
+            "layer_name": "Cabos_de_fibra_otica_subterraneos_Procempa_Sem_quantidade_definida_de_Fibras_Oticas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Cabo: {cabo}",
+              "fields": [
+                {
+                  "name": "cabo",
+                  "label": "Cabo"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "cabo",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#ffaa00",
+              "strokeWidth": 2
+            }
+          }
+        ]
+      },
+      {
+        "title": "Caixas de Emenda de Terceiros",
+        "visible": true,
+        "layers": [
+          {
+            "title": "RNP",
+            "layer_name": "caixas_de_emenda_terceiros",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": null,
+            "visible": true,
+            "geometry_type": "Point",
+            "min_zoom": 17,
+            "queryable": true,
+            "queryable_fields": [
+              {
+                "name": "nome",
+                "label": "nome"
+              },
+              {
+                "name": "operadora",
+                "label": "Operadora"
+              }
+            ],
+            "table_fields": [
+              {
+                "name": "nome",
+                "label": "nome"
+              },
+              {
+                "name": "operadora",
+                "label": "Operadora"
+              }
+            ],
+            "filter": ["==", ["get", "item"], "-CE RNP"],
+            "popup_template": {
+              "title": "Caixas de Emenda de Terceiros - RNP : {nome}",
+              "fields": [
+                {
+                  "name": "nome",
+                  "label": "nome"
+                },
+                {
+                  "name": "operadora",
+                  "label": "Operadora"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "Point",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#282828",
+                "field": "nome",
+                "offsetY": -10,
+                "haloColor": "#ffffff",
+                "haloWidth": 1.5
+              },
+              "radius": 6,
+              "fillColor": "#ffff00",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          }
+        ]
+      },
+      {
+        "title": "Caixas de Emenda Procempa",
+        "visible": true,
+        "layers": [
+          {
+            "title": "Aéreas",
+            "layer_name": "Caixas_de_emenda_aereas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "Point",
+            "min_zoom": 20,
+            "queryable": true,
+            "queryable_fields": [
+              {
+                "name": "nome",
+                "label": "nome"
+              },
+              {
+                "name": "endereco",
+                "label": "Endereço"
+              }
+            ],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Caixas de Emenda Procempa - Aéreas: {nome}",
+              "fields": [
+                {
+                  "name": "nome",
+                  "label": "nome"
+                },
+                {
+                  "name": "endereco",
+                  "label": "Endereço"
+                },
+                {
+                  "name": "latitude",
+                  "label": "latitude"
+                },
+                {
+                  "name": "longitude",
+                  "label": "longitude"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "Point",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#282828",
+                "field": "nome",
+                "offsetY": -10,
+                "haloColor": "#ffffff",
+                "haloWidth": 1.5
+              },
+              "radius": 6,
+              "fillColor": "#ff00ff",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          },
+          {
+            "title": "Subterrâneas",
+            "layer_name": "Caixas_de_emenda _subterraneas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "Point",
+            "min_zoom": 20,
+            "queryable": true,
+            "queryable_fields": [
+              {
+                "name": "nome",
+                "label": "nome"
+              },
+              {
+                "name": "endereco",
+                "label": "Endereço"
+              }
+            ],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Caixas de Emenda Procempa - Subterrâneas: {nome}",
+              "fields": [
+                {
+                  "name": "nome",
+                  "label": "nome"
+                },
+                {
+                  "name": "endereco",
+                  "label": "Endereço"
+                },
+                {
+                  "name": "latitude",
+                  "label": "latitude"
+                },
+                {
+                  "name": "longitude",
+                  "label": "longitude"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "Point",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#282828",
+                "field": "nome",
+                "offsetY": -10,
+                "haloColor": "#ffffff",
+                "haloWidth": 1.5
+              },
+              "radius": 6,
+              "fillColor": "#ffaa00",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          }
+        ]
+      },
+      {
+        "title": "Caixas Subterrâneas Procempa",
+        "visible": true,
+        "layers": [
+          {
+            "title": "Fora do Padrão R1, R2 e R3",
+            "layer_name": "Caixas_subterraneas_procempa_Fora_do_Padrao_R1_R2_R3",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": null,
+            "visible": true,
+            "geometry_type": "Point",
+            "min_zoom": 17,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [
+              {
+                "name": "nome",
+                "label": "nome"
+              },
+              {
+                "name": "endereco",
+                "label": "Endereço"
+              },
+              {
+                "name": "ponto_de_referencia",
+                "label": "Ponto de Referência"
+              },
+              {
+                "name": "observacao",
+                "label": "Observação"
+              }
+            ],
+            "filter": null,
+            "popup_template": {
+              "title": "Caixas Subterrâneas Procempa - cx: {nome}",
+              "fields": [
+                {
+                  "name": "nome",
+                  "label": "nome"
+                },
+                {
+                  "name": "endereco",
+                  "label": "Endereço"
+                },
+                {
+                  "name": "ponto_de_referencia",
+                  "label": "Ponto de Referência"
+                },
+                {
+                  "name": "observacao",
+                  "label": "Observação"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "Point",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#282828",
+                "field": "nome",
+                "offsetY": -10,
+                "haloColor": "#ffffff",
+                "haloWidth": 1.5
+              },
+              "radius": 6,
+              "fillColor": "#ff00ff",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          },
+          {
+            "title": "R1",
+            "layer_name": "Caixas_subterraneas_procempa_R1",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "Point",
+            "min_zoom": 20,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [
+              {
+                "name": "nome",
+                "label": "nome"
+              },
+              {
+                "name": "endereco",
+                "label": "Endereço"
+              },
+              {
+                "name": "ponto_de_referencia",
+                "label": "Ponto de Referência"
+              },
+              {
+                "name": "observacao",
+                "label": "Observação"
+              }
+            ],
+            "filter": null,
+            "popup_template": {
+              "title": "Caixas Subterrâneas Procempa - cx: {nome}",
+              "fields": [
+                {
+                  "name": "nome",
+                  "label": "nome"
+                },
+                {
+                  "name": "endereco",
+                  "label": "Endereço"
+                },
+                {
+                  "name": "ponto_de_referencia",
+                  "label": "Ponto de Referência"
+                },
+                {
+                  "name": "observacao",
+                  "label": "Observação"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "Point",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#282828",
+                "field": "nome",
+                "offsetY": -10,
+                "haloColor": "#ffffff",
+                "haloWidth": 1.5
+              },
+              "radius": 6,
+              "fillColor": "#ff00ff",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          },
+          {
+            "title": "R2",
+            "layer_name": "Caixas_subterraneas_procempa_R2",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "Point",
+            "min_zoom": 17,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [
+              {
+                "name": "nome",
+                "label": "nome"
+              },
+              {
+                "name": "endereco",
+                "label": "Endereço"
+              },
+              {
+                "name": "ponto_de_referencia",
+                "label": "Ponto de Referência"
+              },
+              {
+                "name": "observacao",
+                "label": "Observação"
+              }
+            ],
+            "filter": null,
+            "popup_template": {
+              "title": "Caixas Subterrâneas Procempa - cx: {nome}",
+              "fields": [
+                {
+                  "name": "nome",
+                  "label": "nome"
+                },
+                {
+                  "name": "endereco",
+                  "label": "Endereço"
+                },
+                {
+                  "name": "ponto_de_referencia",
+                  "label": "Ponto de Referência"
+                },
+                {
+                  "name": "observacao",
+                  "label": "Observação"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "Point",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#282828",
+                "field": "nome",
+                "offsetY": -10,
+                "haloColor": "#ffffff",
+                "haloWidth": 1.5
+              },
+              "radius": 6,
+              "fillColor": "#ff0000",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          },
+          {
+            "title": "R3",
+            "layer_name": "Caixas_subterraneas_procempa_R3",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "Point",
+            "min_zoom": 17,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [
+              {
+                "name": "nome",
+                "label": "nome"
+              },
+              {
+                "name": "endereco",
+                "label": "Endereço"
+              },
+              {
+                "name": "ponto_de_referencia",
+                "label": "Ponto de Referência"
+              },
+              {
+                "name": "observacao",
+                "label": "Observação"
+              }
+            ],
+            "filter": null,
+            "popup_template": {
+              "title": "Caixas Subterrâneas Procempa - cx: {nome}",
+              "fields": [
+                {
+                  "name": "nome",
+                  "label": "nome"
+                },
+                {
+                  "name": "endereco",
+                  "label": "Endereço"
+                },
+                {
+                  "name": "ponto_de_referencia",
+                  "label": "Ponto de Referência"
+                },
+                {
+                  "name": "observacao",
+                  "label": "Observação"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "Point",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#282828",
+                "field": "nome",
+                "offsetY": -10,
+                "haloColor": "#ffffff",
+                "haloWidth": 1.5
+              },
+              "radius": 6,
+              "fillColor": "#ff00ff",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          }
+        ]
+      },
+      {
+        "title": "Dutos Procempa",
+        "visible": true,
+        "layers": [
+          {
+            "title": "Vala compartilhada ou paralela com a CEEE",
+            "layer_name": "Duto_Procempa_CEEE",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Duto: {duto}",
+              "fields": [
+                {
+                  "name": "duto",
+                  "label": "Duto"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "duto",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#00ffff",
+              "strokeWidth": 4
+            }
+          },
+          {
+            "title": "Vala compartilhada ou paralela com AT&T",
+            "layer_name": "Duto_Procempa_ATT",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Duto: {duto}",
+              "fields": [
+                {
+                  "name": "duto",
+                  "label": "Duto"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "duto",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#00ffff",
+              "strokeWidth": 4
+            }
+          },
+          {
+            "title": "Vala compartilhada ou paralela com Eletronet",
+            "layer_name": "Duto_Procempa_Eletronet",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Duto: {duto}",
+              "fields": [
+                {
+                  "name": "duto",
+                  "label": "Duto"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "duto",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#00ffff",
+              "strokeWidth": 4
+            }
+          },
+          {
+            "title": "Vala compartilhada ou paralela com GVT",
+            "layer_name": "Duto_Procempa_GVT",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Duto: {duto}",
+              "fields": [
+                {
+                  "name": "duto",
+                  "label": "Duto"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "duto",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#00ffff",
+              "strokeWidth": 4
+            }
+          },
+          {
+            "title": "Vala compartilhada ou paralela com Interlig",
+            "layer_name": "Duto_Procempa_Interlig",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Duto: {duto}",
+              "fields": [
+                {
+                  "name": "duto",
+                  "label": "Duto"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "duto",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#00ffff",
+              "strokeWidth": 4
+            }
+          },
+          {
+            "title": "Vala compartilhada ou paralela com Sulgás",
+            "layer_name": "Duto_Procempa_Sulgas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Duto: {duto}",
+              "fields": [
+                {
+                  "name": "duto",
+                  "label": "Duto"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "duto",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#98e600",
+              "strokeWidth": 4
+            }
+          },
+          {
+            "title": "Vala compartilhada ou paralela com Telefônica",
+            "layer_name": "Duto_Procempa_Telefonica",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Duto: {duto}",
+              "fields": [
+                {
+                  "name": "duto",
+                  "label": "Duto"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "duto",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#00ffff",
+              "strokeWidth": 4
+            }
+          },
+          {
+            "title": "Vala Procempa",
+            "layer_name": "Duto_Procempa",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "native_crs": "EPSG:10665",
+            "visible": true,
+            "geometry_type": "LineString",
+            "min_zoom": null,
+            "queryable": true,
+            "queryable_fields": [],
+            "table_fields": [],
+            "filter": null,
+            "popup_template": {
+              "title": "Duto: {duto}",
+              "fields": [
+                {
+                  "name": "duto",
+                  "label": "Duto"
+                },
+                {
+                  "name": "length",
+                  "label": "Comprimento (m)"
+                }
+              ]
+            },
+            "style_config": {
+              "type": "LineString",
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#000000",
+                "field": "duto",
+                "haloColor": "#ffffff",
+                "haloWidth": 2,
+                "placement": "line"
+              },
+              "strokeColor": "#00ffff",
+              "strokeWidth": 4
+            }
+          }
+        ]
+      },
+      {
+        "title": "Desativados",
+        "visible": false,
+        "layers": [
+          {
+            "title": "POP",
+            "layer_name": "desativado_pops",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "visible": false,
+            "geometry_type": "Point",
+            "style_config": {
+              "type": "Point",
+              "radius": 6.5,
+              "fillColor": "#9c9c9c",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          },
+          {
+            "title": "Caixas de Emenda Aéreas",
+            "layer_name": "desativado_caixas",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "visible": false,
+            "geometry_type": "Point",
+            "filter": ["all", ["==", ["get", "item"], "-Desativado CE Procempa"], ["!=", ["get", "ce_aerea_procempa"], null]],
+            "style_config": {
+              "type": "Point",
+              "radius": 4,
+              "fillColor": "#9c9c9c",
+              "strokeColor": "#000000",
+              "strokeWidth": 0.5
+            }
+          }
+        ]
+      },
+      {
+        "title": "Informações por verificar",
+        "visible": false,
+        "layers": [
+          {
+            "title": "Cabos Óticos Procempa",
+            "layer_name": "cabos_por_verificar",
+            "workspace": "infovia_post",
+            "service_type": "WFS",
+            "visible": false,
+            "geometry_type": "LineString",
+            "style_config": {
+              "type": "LineString",
+              "strokeColor": "#ff0000",
+              "strokeWidth": 3,
+              "label": {
+                "font": "10px Noto Sans Regular",
+                "color": "#660000",
+                "field": "cabo",
+                "placement": "line"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -13,6 +13,7 @@ export default defineConfig({
     alias: [
       { find: /^react$/, replacement: path.resolve(__dirname, 'src/lib/reactDefault.ts') },
     ],
+    dedupe: ['react', 'react-dom'],
   },
   build: {
     // Mantine bundle expects React default export in some paths (React.default.useId).
@@ -22,6 +23,8 @@ export default defineConfig({
     },
   },
   server: {
+    port: Number(process.env.VITE_DEV_PORT ?? process.env.PORT ?? 80),
+    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

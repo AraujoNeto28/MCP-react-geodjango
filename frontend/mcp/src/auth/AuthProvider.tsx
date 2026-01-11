@@ -7,6 +7,13 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 	const [ready, setReady] = useState(false)
 	const [user, setUser] = useState(() => getKeycloakUser())
 
+	const redirectUri = useMemo(() => {
+		// IMPORTANT: do not use the full current URL as redirectUri.
+		// If Keycloak puts auth params in the URL fragment, using it as redirectUri
+		// causes the redirect_uri param to grow on each login attempt (eventually 500).
+		return `${window.location.origin}/`
+	}, [])
+
 	useEffect(() => {
 		let cancelled = false
 
@@ -16,14 +23,26 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 					onLoad: "login-required",
 					pkceMethod: "S256",
 					checkLoginIframe: false,
+					redirectUri,
 				})
 
 				if (cancelled) return
 
 				if (!authenticated) {
 					// Should not happen with login-required, but keep it safe.
-					await keycloak.login()
+					await keycloak.login({ redirectUri })
 					return
+				}
+
+				// Keycloak's auth callback often lands in the URL fragment.
+				// Once processed, clear it so future redirects never include those params.
+				try {
+					const hash = window.location.hash
+					if (hash && (hash.includes("code=") || hash.includes("session_state=") || hash.includes("state="))) {
+						window.history.replaceState(null, document.title, window.location.pathname + window.location.search)
+					}
+				} catch {
+					// ignore
 				}
 
 				if (!hasRequiredRole()) {
@@ -41,7 +60,7 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 					} catch {
 						// If refresh fails, force re-login.
 						try {
-							await keycloak.login()
+							await keycloak.login({ redirectUri })
 						} catch {
 							// ignore
 						}
@@ -50,7 +69,7 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 			} catch {
 				// If init fails, force a fresh login.
 				try {
-					await keycloak.login()
+					await keycloak.login({ redirectUri })
 				} catch {
 					// ignore
 				}
@@ -60,7 +79,7 @@ export function AuthProvider(props: { children: React.ReactNode }) {
 		return () => {
 			cancelled = true
 		}
-	}, [])
+	}, [redirectUri])
 
 	const value = useMemo(
 		() => ({
